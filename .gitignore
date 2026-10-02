@@ -1,0 +1,19 @@
+# Original private working copy and on-device diagnostic recordings
+/lg_rs232_ip/
+.venv*/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.DS_Store
+*.log
+.env
+secrets.yaml
+lg_display_test_results_*.json
+
+# Private per-installation inventories and session data
+/local/
+
+.test-dependencies/
+
+/dev/results.json

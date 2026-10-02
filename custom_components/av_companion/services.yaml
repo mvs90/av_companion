@@ -1,0 +1,174 @@
+show_content:
+  name: Show content temporarily
+  description: Queue media on the configured content player and restore the prior
+    display input.
+  target:
+    entity:
+      domain: media_player
+      integration: av_companion
+  fields:
+    media_id:
+      name: Media URL or media-source ID
+      selector: &id001
+        text: {}
+      required: true
+    media_type:
+      name: Media type
+      selector: *id001
+      default: video
+    duration: &id002
+      name: Duration (seconds)
+      selector:
+        number:
+          min: 1
+          max: 3600
+          mode: box
+      default: 30
+    priority: &id003
+      name: Priority
+      selector:
+        select:
+          options:
+          - normal
+          - urgent
+      default: normal
+show_notification:
+  name: Show notification
+  description: Requires a configured renderer script. For native LG text overlays
+    use show_toast.
+  target:
+    entity:
+      domain: media_player
+      integration: av_companion
+  fields:
+    message:
+      name: Message
+      selector: *id001
+      required: true
+    title:
+      name: Title
+      selector: *id001
+    duration: *id002
+    priority: *id003
+    mode:
+      name: Mode
+      selector:
+        select:
+          options:
+          - overlay
+          - fullscreen
+      default: overlay
+clear_content:
+  name: Clear temporary content
+  description: Clear the queue, cancel the current presentation and restore its display
+    input where possible.
+  target:
+    entity:
+      domain: media_player
+      integration: av_companion
+  fields: {}
+send_remote_command:
+  name: Send remote command
+  description: Route navigation to the linked remote on its HDMI input; otherwise
+    use LG remote keys.
+  target:
+    entity:
+      domain: media_player
+      integration: av_companion
+  fields:
+    command:
+      name: Command
+      selector:
+        select:
+          options:
+          - up
+          - down
+          - left
+          - right
+          - select
+          - menu
+          - home
+          - information
+          - skip_forward
+          - skip_backward
+          - next
+          - previous
+      required: true
+set_sound_mode:
+  name: Set sound mode
+  description: Control the configured Sonos night sound or speech enhancement switch.
+  target:
+    entity:
+      domain: media_player
+      integration: av_companion
+  fields:
+    mode:
+      name: Mode
+      selector:
+        select:
+          options:
+          - night
+          - speech
+      required: true
+    enabled:
+      name: Enabled
+      selector:
+        boolean: {}
+      required: true
+announce:
+  name: Announce audio
+  description: Play an audio announcement through a sound system supporting announcement
+    mixing.
+  target:
+    entity:
+      domain: media_player
+      integration: av_companion
+  fields:
+    media_id:
+      name: Media URL or media-source ID
+      selector: *id001
+      required: true
+    media_type:
+      name: Media type
+      selector: *id001
+      default: music
+    volume:
+      name: Announcement volume
+      selector:
+        number:
+          min: 0
+          max: 100
+      default: 40
+show_display_content:
+  name: Show content on the LG display
+  description: Restore display supply if needed, then delegate native media to the
+    LG integration. Native content audio is not routed to Sonos.
+  target:
+    entity:
+      domain: media_player
+      integration: av_companion
+  fields:
+    kind:
+      required: true
+      selector:
+        select:
+          options:
+          - image
+          - video
+          - stream
+          - website
+    media_id:
+      required: true
+      selector:
+        text: {}
+    duration:
+      default: 60
+      selector:
+        number:
+          min: 1
+          max: 3600
+          mode: box
+    muted:
+      default: true
+      selector:
+        boolean: {}

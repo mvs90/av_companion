@@ -1,0 +1,76 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "AV Companion",
+        "description": "Select the display configured in LG Professional Display. Configure optional players and supply in Options.",
+        "data": {
+          "display_entity_id": "LG display",
+          "name": "System name"
+        }
+      }
+    },
+    "error": {
+      "invalid_display": "Select a media player from LG Professional Display."
+    },
+    "abort": {
+      "already_configured": "Already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "AV Companion",
+        "data": {
+          "linked_media_player_entity_id": "Linked Media Player Entity",
+          "linked_media_player_input": "Linked Media Player HDMI Input",
+          "show_input_hdmi1": "Show HDMI 1 in Source List",
+          "show_input_hdmi2": "Show HDMI 2 in Source List",
+          "show_input_hdmi3": "Show HDMI 3 in Source List",
+          "show_linked_app_sources": "Show Linked App Sources",
+          "visible_linked_media_sources": "Visible Linked App Sources",
+          "input_name_hdmi1": "Media Player HDMI 1 Name",
+          "input_name_hdmi2": "Media Player HDMI 2 Name",
+          "input_name_hdmi3": "Media Player HDMI 3 Name",
+          "power_supply_switch_entity_id": "Power Supply Switch Entity",
+          "linked_volume_media_player_entity_id": "Linked Volume Media Player Entity",
+          "linked_volume_sync_mode": "Linked Volume Sync Mode",
+          "media_player_pending_power_seconds": "Media Player Pending Power Seconds",
+          "media_player_pending_source_seconds": "Media Player Pending Source Seconds",
+          "power_supply_off_delay_seconds": "Power Supply Off Delay Seconds",
+          "standby_signal_check": "Check HDMI signal on the display",
+          "standby_no_signal_seconds": "No-signal shutdown delay (seconds; 0 disables)",
+          "standby_idle_seconds": "Idle fallback when signal is unknown (seconds; 0 disables)",
+          "display_wake_timeout": "Display startup timeout (seconds)",
+          "power_supply_startup_delay": "Wait after socket power-on (seconds)",
+          "standby_power_threshold": "Supplementary standby power threshold (W)",
+          "power_sensor_entity_id": "Display power measurement sensor (W/kW)",
+          "linked_remote_entity_id": "Linked remote",
+          "linked_remote_power_mode": "Remote power commands",
+          "content_media_player_entity_id": "Optional content player",
+          "content_player_input": "Content player HDMI input",
+          "notification_script_entity_id": "Notification renderer script (show/clear contract)",
+          "notification_wake_display": "Allow notifications/content to wake the display",
+          "quiet_hours_enabled": "Enable notification quiet hours",
+          "quiet_hours_start": "Quiet hours start (HH:MM)",
+          "quiet_hours_end": "Quiet hours end (HH:MM)",
+          "sonos_select_tv_source": "Select sound system TV input on explicit turn-on",
+          "sonos_tv_source": "Sound system TV source name",
+          "sonos_night_sound_entity_id": "Sonos night sound switch",
+          "sonos_speech_enhancement_entity_id": "Sonos speech enhancement switch",
+          "polling_interval": "Polling interval (seconds)"
+        },
+        "data_description": {}
+      }
+    },
+    "error": {
+      "invalid_pending_range": "Value must be between 0 and 60 seconds",
+      "invalid_power_supply_off_delay_range": "Power supply off delay must be between 0 and 300 seconds",
+      "invalid_standby_timeout": "Enter 0 or 30–86400 seconds.",
+      "self_reference": "Do not link an entity belonging to this integration.",
+      "invalid_option_range": "Value outside the permitted range.",
+      "invalid_time": "Enter a time as HH:MM."
+    }
+  },
+  "title": "AV Companion"
+}

@@ -1,0 +1,18 @@
+{
+  "domain": "av_companion",
+  "name": "AV Companion",
+  "codeowners": [
+    "@mvs90"
+  ],
+  "config_flow": true,
+  "dependencies": [
+    "lg_rs232_ip",
+    "media_source"
+  ],
+  "documentation": "https://github.com/mvs90/av_companion",
+  "integration_type": "helper",
+  "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/mvs90/av_companion/issues",
+  "requirements": [],
+  "version": "1.0.0"
+}
