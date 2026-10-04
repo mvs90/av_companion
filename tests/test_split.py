@@ -189,3 +189,43 @@ async def test_dashboard_source_label_is_unambiguous_and_older_api_keeps_working
     del player._lg_display.dashboard_available
     assert player.dashboard_source is None
     assert player.source_list == ["Dashboard", "Dashboard (App)"]
+
+
+async def test_pip_is_optional_selects_app_without_waking_player_and_exits_for_linked_source(
+    player,
+):
+    assert player.pip_source is None
+    player._lg_display.pip_available = True
+    player._lg_display.pip_active = False
+    player._lg_display.async_select_pip = AsyncMock()
+    assert "PiP" in player.source_list
+    await player.async_select_source("PiP")
+    player._lg_display.async_select_pip.assert_awaited_once()
+    player._lg_display.async_set_input.assert_not_awaited()
+    player._async_call_linked_service.assert_not_awaited()
+    player._lg_display.pip_active = True
+    player._lg_display.presentation_active = True
+    assert player.source == "PiP"
+    await player._async_check_standby()
+    player._lg_display.async_power_off.assert_not_awaited()
+    player._linked_source_list = ["Netflix"]
+    player._current_input_id = player._linked_input_id
+    mapping = player._linked_source_display_map()
+    name = next(k for k, v in mapping.items() if v == "Netflix")
+    await player.async_select_source(name)
+    player._lg_display.async_set_input.assert_awaited_once_with(player._linked_input_id)
+
+
+async def test_pip_label_collision_and_failed_selection_keep_previous_source(player):
+    from homeassistant.exceptions import HomeAssistantError
+
+    player._lg_display.pip_available = True
+    player._sources = {"PiP": 0x90, "PiP (App)": 0x91}
+    assert player.pip_source == "PiP (App) (App)"
+    player._lg_display.async_select_pip = AsyncMock(
+        side_effect=HomeAssistantError("No app")
+    )
+    previous = player.source
+    with pytest.raises(HomeAssistantError):
+        await player.async_select_source(player.pip_source)
+    assert player.source == previous

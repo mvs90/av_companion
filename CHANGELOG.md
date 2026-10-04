@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2.0
+
+- Expose the optional LG 2.10 PiP source alongside Dashboard, including unique labels and direct-source reflection.
+- Select the persistent LG PiP view through the public API after supply/display readiness checks, without waking the linked player. Linked player source selection leaves PiP even when the cached HDMI input matches.
+- Retain compatibility with older LG API v1 versions where PiP is unavailable. Persistent-view standby protection remains provided by the LG public API.
+
 ## 1.1.0
 
 - Expose the optional LG Dashboard source in the combined AV media player's source list, including unique naming when an input/app uses the same label.

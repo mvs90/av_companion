@@ -570,14 +570,24 @@ class AVMediaPlayer(ExtendedControls, MediaPlayerEntity):
         # Optional API extension: AV remains compatible with LG 2.0/API v1.
         if getattr(self._lg_display, "dashboard_available", False) is not True:
             return None
+        return self._app_source_name("Dashboard")
+
+    @property
+    def pip_source(self) -> Optional[str]:
+        if getattr(self._lg_display, "pip_available", False) is not True:
+            return None
+        return self._app_source_name("PiP")
+
+    def _app_source_name(self, name):
         used = set(self._sources) | set(self._linked_source_display_map())
-        name = "Dashboard"
         while name in used:
             name += " (App)"
         return name
 
     @property
     def source(self) -> Optional[str]:
+        if getattr(self._lg_display, "pip_active", False) is True:
+            return self.pip_source
         if getattr(self._lg_display, "dashboard_active", False) is True:
             return self.dashboard_source
         return self._source
@@ -587,6 +597,8 @@ class AVMediaPlayer(ExtendedControls, MediaPlayerEntity):
         display_sources = list(self._sources.keys())
         if self.dashboard_source:
             display_sources.append(self.dashboard_source)
+        if self.pip_source:
+            display_sources.append(self.pip_source)
         linked_sources = list(self._linked_source_display_map().keys())
         if not linked_sources:
             return display_sources
@@ -1688,6 +1700,7 @@ class AVMediaPlayer(ExtendedControls, MediaPlayerEntity):
             source not in self._sources
             and source not in self._linked_source_display_map()
             and source != self.dashboard_source
+            and source != self.pip_source
         ):
             raise HomeAssistantError("Unknown source")
         await self._async_cancel_wake()
@@ -1695,8 +1708,11 @@ class AVMediaPlayer(ExtendedControls, MediaPlayerEntity):
         if await self._lg_display.async_get_power_status(use_cache=False) is not True:
             raise HomeAssistantError("Display did not become ready")
         self._standby_guard.reset()
-        if source == self.dashboard_source:
-            await self._lg_display.async_select_dashboard()
+        if source in (self.dashboard_source, self.pip_source):
+            if source == self.pip_source:
+                await self._lg_display.async_select_pip()
+            else:
+                await self._lg_display.async_select_dashboard()
             self._current_input_id = None
             self._source = source
             self._pending_source = None
@@ -1724,6 +1740,7 @@ class AVMediaPlayer(ExtendedControls, MediaPlayerEntity):
         switched_to_linked_input = (
             self._current_input_id == linked_input_id
             and getattr(self._lg_display, "dashboard_active", False) is not True
+            and getattr(self._lg_display, "pip_active", False) is not True
         )
         if not switched_to_linked_input:
             switched_to_linked_input = await self._lg_display.async_set_input(

@@ -1,5 +1,11 @@
 # Split release acceptance — 2026-10-02
 
+## AV 1.2.0 / LG 2.10.0 — 2026-10-04
+
+**93 tests pass on HA 2025.3.4/Python 3.13 and HA 2026.9.4/Python 3.14.** Added coverage checks optional PiP availability, non-colliding source names, failure preserving the previous source, selection without waking the linked player, direct LG source reflection, standby protection and leaving PiP for a player app even when its HDMI input is cached. CI retains import compatibility with LG 2.0.0/API v1.
+
+A temporary real AV entry in the existing **unifi-air-quality-ha-dev / HA 2026.9.4** container controlled the existing physical **LG 75UH5F-HJ**. PiP appeared and selected the independent LG composition; HDMI 1 restored full-screen video. Selecting PiP directly on LG propagated to the combined player. The temporary AV entry was removed and the original HDMI 1 source restored. No new HA container, linked player/soundbar/socket configuration or HomeKit pairing was created. The native LG view and restart checks are documented in the LG repository's 2.10.0 acceptance.
+
 ## AV 1.1.0 / LG 2.7.0 — 2026-10-04
 
 **91 tests pass on HA 2025.3.4/Python 3.13 and HA 2026.9.4/Python 3.14.** New tests cover optional Dashboard availability, direct LG source reflection, non-colliding labels, display-only wake/selection, failed selection, missing API extensions and leaving Dashboard for a linked player app even when the HDMI cache matches. Existing standby, power-supply, metadata, controls and HomeKit event tests remain successful. CI continues testing import/API compatibility with LG 2.0.0.
