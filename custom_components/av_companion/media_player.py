@@ -566,12 +566,27 @@ class AVMediaPlayer(ExtendedControls, MediaPlayerEntity):
         return self._is_muted
 
     @property
+    def dashboard_source(self) -> Optional[str]:
+        # Optional API extension: AV remains compatible with LG 2.0/API v1.
+        if getattr(self._lg_display, "dashboard_available", False) is not True:
+            return None
+        used = set(self._sources) | set(self._linked_source_display_map())
+        name = "Dashboard"
+        while name in used:
+            name += " (App)"
+        return name
+
+    @property
     def source(self) -> Optional[str]:
+        if getattr(self._lg_display, "dashboard_active", False) is True:
+            return self.dashboard_source
         return self._source
 
     @property
     def source_list(self) -> list[str]:
         display_sources = list(self._sources.keys())
+        if self.dashboard_source:
+            display_sources.append(self.dashboard_source)
         linked_sources = list(self._linked_source_display_map().keys())
         if not linked_sources:
             return display_sources
@@ -1672,6 +1687,7 @@ class AVMediaPlayer(ExtendedControls, MediaPlayerEntity):
         if (
             source not in self._sources
             and source not in self._linked_source_display_map()
+            and source != self.dashboard_source
         ):
             raise HomeAssistantError("Unknown source")
         await self._async_cancel_wake()
@@ -1679,6 +1695,14 @@ class AVMediaPlayer(ExtendedControls, MediaPlayerEntity):
         if await self._lg_display.async_get_power_status(use_cache=False) is not True:
             raise HomeAssistantError("Display did not become ready")
         self._standby_guard.reset()
+        if source == self.dashboard_source:
+            await self._lg_display.async_select_dashboard()
+            self._current_input_id = None
+            self._source = source
+            self._pending_source = None
+            self._pending_source_until = 0.0
+            self.async_write_ha_state()
+            return
         source_id = self._sources.get(source)
         if source_id is not None:
             if await self._lg_display.async_set_input(source_id):
@@ -1697,7 +1721,10 @@ class AVMediaPlayer(ExtendedControls, MediaPlayerEntity):
             _LOGGER.warning("Unsupported source requested: %s", source)
             return
 
-        switched_to_linked_input = self._current_input_id == linked_input_id
+        switched_to_linked_input = (
+            self._current_input_id == linked_input_id
+            and getattr(self._lg_display, "dashboard_active", False) is not True
+        )
         if not switched_to_linked_input:
             switched_to_linked_input = await self._lg_display.async_set_input(
                 linked_input_id

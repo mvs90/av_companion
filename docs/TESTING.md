@@ -1,5 +1,20 @@
 # Split release acceptance — 2026-10-02
 
+## AV 1.1.0 / LG 2.7.0 — 2026-10-04
+
+**91 tests pass on HA 2025.3.4/Python 3.13 and HA 2026.9.4/Python 3.14.** New tests cover optional Dashboard availability, direct LG source reflection, non-colliding labels, display-only wake/selection, failed selection, missing API extensions and leaving Dashboard for a linked player app even when the HDMI cache matches. Existing standby, power-supply, metadata, controls and HomeKit event tests remain successful. CI continues testing import/API compatibility with LG 2.0.0.
+
+In the existing **unifi-air-quality-ha-dev / HA 2026.9.4** container, a temporary AV config entry linked to the already configured physical LG **75UH5F-HJ** verified:
+
+- Dashboard appeared in the combined source list and selecting it changed both the LG and AV source to Dashboard while reporting ON.
+- Selecting HDMI 1 through AV returned to television. Selecting Dashboard directly on LG also updated the combined entity.
+- Disabling custom Studio layouts removed the optional source; restoring layouts made it available again.
+- The temporary AV entry was removed afterwards; the original LG entry and Morgenlicht dashboard remain, with HDMI 1 active. No new HA container, real player/soundbar/socket configuration or Apple Home pairing was created.
+
+The feature adds a normal source to the combined TV entity used by HomeKit. Actual iPhone pairing/input discovery is not part of this acceptance. Player-app return with a matching cached HDMI input and source-label collisions are covered by regression tests.
+
+## Initial split acceptance
+
 Versions: **LG Professional Display 2.0.0**, **AV Companion 1.0.0**. Fresh configuration; no migration. The shared Docker test installation was updated from HA 2026.8.1 to **2026.9.4** after backing up its stopped configuration, components and Compose file. Existing UniFi Air Quality remained loaded and its data was preserved.
 
 ## Automated coverage

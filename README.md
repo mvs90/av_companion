@@ -2,7 +2,7 @@
 
 Combine an LG professional display, an optional player such as Apple TV, a sound system such as Sonos, and a display-only power socket into **one Home Assistant TV media player**. Uses the devices' existing HA integrations; it does not implement their network protocols.
 
-Requires [LG Professional Display 2.0.0 or later](https://github.com/mvs90/lg_rs232_ip) (public API v1) and Home Assistant 2025.3 or later. Each LG display can have one AV system. All other devices are optional. Version **1.0.0** is a fresh setup without prototype migration.
+Requires [LG Professional Display 2.0.0 or later](https://github.com/mvs90/lg_rs232_ip) (public API v1) and Home Assistant 2025.3 or later. Each LG display can have one AV system. All other devices are optional. Version **1.1.0** is a fresh setup without prototype migration.
 
 [Deutsche Anleitung](docs/README.de.md) · [Actions and examples](docs/FEATURES.md) · [Standby behavior](docs/STANDBY.md) · [MIT license](LICENSE)
 
@@ -17,7 +17,7 @@ HACS requires one integration per repository. Both packages must be installed se
 
 ## One TV for the whole system
 
-The combined TV exposes LG inputs, player apps and playback metadata, and routes volume/mute to the chosen sound system. Controls follow the active input and supported device capabilities. HomeKit navigation uses the linked remote on its input and LG navigation on other inputs. Native LG content suppresses player metadata and automatic standby until it finishes.
+The combined TV exposes LG inputs, player apps and playback metadata, and routes volume/mute to the chosen sound system. Controls follow the active input and supported device capabilities. HomeKit navigation uses the linked remote on its input and LG navigation on other inputs. Native LG content suppresses player metadata and automatic standby until it finishes. With **LG 2.7.0** and enabled Studio layouts/resident SI mode, **Dashboard** also appears in this combined source list (and its HomeKit inputs). Selecting it restores the configured display supply if needed, then selects the LG dashboard without waking the linked player. Select HDMI or a player app to return. The source follows direct LG selections as well; intentionally selected dashboards are protected from automatic player-idle standby. Configure widgets/backgrounds in LG Display Studio. Older LG API v1 versions remain supported without this source.
 
 Configure a **HomeKit Bridge in accessory mode**, including only the combined TV entity. Keep the individual device integrations installed. [Official HA HomeKit setup](https://www.home-assistant.io/integrations/homekit/).
 

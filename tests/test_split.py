@@ -122,3 +122,70 @@ async def test_lg_status_event_stays_on_ha_event_loop(tmp_path, player):
         for call in player.async_on_remove.call_args_list:
             call.args[0]()
         await hass.async_stop(force=True)
+
+
+async def test_dashboard_is_optional_and_follows_lg_source_directly(player):
+    player._lg_display.dashboard_available = False
+    player._lg_display.dashboard_active = False
+    assert "Dashboard" not in player.source_list
+    player._lg_display.dashboard_available = True
+    player._lg_display.dashboard_active = True
+    assert player.source_list[-1] == "Dashboard"
+    assert player.source == "Dashboard"
+    player._lg_display.presentation_active = True
+    await player._async_check_standby()
+    player._lg_display.async_power_off.assert_not_awaited()
+
+
+async def test_dashboard_selection_wakes_only_display_and_forwards_through_public_api(
+    player,
+):
+    player._lg_display.dashboard_available = True
+    player._lg_display.dashboard_active = False
+    player._lg_display.async_select_dashboard = AsyncMock()
+    await player.async_select_source("Dashboard")
+    player._lg_display.async_select_dashboard.assert_awaited_once()
+    player._lg_display.async_set_input.assert_not_awaited()
+    player._async_call_linked_service.assert_not_awaited()
+    assert player._source == "Dashboard" and player._current_input_id is None
+
+
+async def test_failed_dashboard_selection_does_not_claim_new_source(player):
+    from homeassistant.exceptions import HomeAssistantError
+
+    player._lg_display.dashboard_available = True
+    player._lg_display.async_select_dashboard = AsyncMock(
+        side_effect=HomeAssistantError("No app")
+    )
+    previous = player.source
+    with pytest.raises(HomeAssistantError):
+        await player.async_select_source("Dashboard")
+    assert player.source == previous
+
+
+async def test_linked_app_selection_leaves_dashboard_even_when_input_cache_matches(
+    player,
+):
+    player._lg_display.dashboard_available = True
+    player._lg_display.dashboard_active = True
+    player._linked_source_list = ["Netflix"]
+    player._current_input_id = player._linked_input_id
+    mapping = player._linked_source_display_map()
+    name = next(k for k, v in mapping.items() if v == "Netflix")
+    await player.async_select_source(name)
+    player._lg_display.async_set_input.assert_awaited_once_with(player._linked_input_id)
+    player._async_call_linked_service.assert_awaited_once_with(
+        "select_source", source="Netflix"
+    )
+
+
+async def test_dashboard_source_label_is_unambiguous_and_older_api_keeps_working(
+    player,
+):
+    player._lg_display.dashboard_available = True
+    player._sources = {"Dashboard": 0x90, "Dashboard (App)": 0x91}
+    assert player.dashboard_source == "Dashboard (App) (App)"
+    assert player.source_list.count("Dashboard (App) (App)") == 1
+    del player._lg_display.dashboard_available
+    assert player.dashboard_source is None
+    assert player.source_list == ["Dashboard", "Dashboard (App)"]
