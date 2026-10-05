@@ -61,3 +61,7 @@ PYTHONPATH="$PWD:$PWD/../lg_rs232_ip" .venv/bin/python -m pytest -q
 [Test report and Docker acceptance procedure](docs/TESTING.md) · [LG API contract](https://github.com/mvs90/lg_rs232_ip/blob/main/docs/ARCHITECTURE.md).
 
 With **LG 2.10.0** and **AV Companion 1.2.0**, **PiP** also appears as a persistent source. It uses the last HDMI input inside its separately assigned Studio view. HDMI selections always return to full-screen video in the resident app. PiP selection does not wake a linked player; selecting a player app explicitly leaves PiP. Both Dashboard and PiP remain protected from automatic idle-based standby until explicitly turned off. The optional source is absent with older LG versions.
+
+### Full-screen media source
+
+AV Companion 1.3.0 exposes **Mediaplayer** when LG Professional Display 2.12.0 provides the optional resident music view. Configure its player and design in LG Display Studio. Selecting this source does not start the linked Apple TV/player. Active view protection prevents automatic shutdown based on an idle HDMI source. The input is also exposed through the combined player to HomeKit; older LG versions continue without the additional source.

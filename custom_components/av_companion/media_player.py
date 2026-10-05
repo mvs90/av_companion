@@ -578,6 +578,12 @@ class AVMediaPlayer(ExtendedControls, MediaPlayerEntity):
             return None
         return self._app_source_name("PiP")
 
+    @property
+    def media_view_source(self) -> Optional[str]:
+        if getattr(self._lg_display, "media_view_available", False) is not True:
+            return None
+        return self._app_source_name("Mediaplayer")
+
     def _app_source_name(self, name):
         used = set(self._sources) | set(self._linked_source_display_map())
         while name in used:
@@ -586,6 +592,8 @@ class AVMediaPlayer(ExtendedControls, MediaPlayerEntity):
 
     @property
     def source(self) -> Optional[str]:
+        if getattr(self._lg_display, "media_view_active", False) is True:
+            return self.media_view_source
         if getattr(self._lg_display, "pip_active", False) is True:
             return self.pip_source
         if getattr(self._lg_display, "dashboard_active", False) is True:
@@ -599,6 +607,8 @@ class AVMediaPlayer(ExtendedControls, MediaPlayerEntity):
             display_sources.append(self.dashboard_source)
         if self.pip_source:
             display_sources.append(self.pip_source)
+        if self.media_view_source:
+            display_sources.append(self.media_view_source)
         linked_sources = list(self._linked_source_display_map().keys())
         if not linked_sources:
             return display_sources
@@ -1701,6 +1711,7 @@ class AVMediaPlayer(ExtendedControls, MediaPlayerEntity):
             and source not in self._linked_source_display_map()
             and source != self.dashboard_source
             and source != self.pip_source
+            and source != self.media_view_source
         ):
             raise HomeAssistantError("Unknown source")
         await self._async_cancel_wake()
@@ -1708,8 +1719,10 @@ class AVMediaPlayer(ExtendedControls, MediaPlayerEntity):
         if await self._lg_display.async_get_power_status(use_cache=False) is not True:
             raise HomeAssistantError("Display did not become ready")
         self._standby_guard.reset()
-        if source in (self.dashboard_source, self.pip_source):
-            if source == self.pip_source:
+        if source in (self.dashboard_source, self.pip_source, self.media_view_source):
+            if source == self.media_view_source:
+                await self._lg_display.async_select_media_view()
+            elif source == self.pip_source:
                 await self._lg_display.async_select_pip()
             else:
                 await self._lg_display.async_select_dashboard()
@@ -1741,6 +1754,7 @@ class AVMediaPlayer(ExtendedControls, MediaPlayerEntity):
             self._current_input_id == linked_input_id
             and getattr(self._lg_display, "dashboard_active", False) is not True
             and getattr(self._lg_display, "pip_active", False) is not True
+            and getattr(self._lg_display, "media_view_active", False) is not True
         )
         if not switched_to_linked_input:
             switched_to_linked_input = await self._lg_display.async_set_input(

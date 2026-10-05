@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.3.0
+
+- Expose the optional LG 2.12 Mediaplayer source on the combined player and its HomeKit input list. Select it through public API v1 without starting a linked player.
+- Follow direct LG music-view selection and leave the view when choosing a linked HDMI source, even when the cached input already matches. Preserve presentation/standby guards and compatibility with older LG API v1 installations.
+
 ## 1.2.0
 
 - Expose the optional LG 2.10 PiP source alongside Dashboard, including unique labels and direct-source reflection.

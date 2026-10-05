@@ -229,3 +229,45 @@ async def test_pip_label_collision_and_failed_selection_keep_previous_source(pla
     with pytest.raises(HomeAssistantError):
         await player.async_select_source(player.pip_source)
     assert player.source == previous
+
+
+async def test_media_view_is_optional_selects_app_without_waking_player_and_exits_for_linked_source(
+    player,
+):
+    assert player.media_view_source is None
+    player._lg_display.media_view_available = True
+    player._lg_display.media_view_active = False
+    player._lg_display.async_select_media_view = AsyncMock()
+    assert "Mediaplayer" in player.source_list
+    await player.async_select_source("Mediaplayer")
+    player._lg_display.async_select_media_view.assert_awaited_once()
+    player._lg_display.async_set_input.assert_not_awaited()
+    player._async_call_linked_service.assert_not_awaited()
+    player._lg_display.media_view_active = True
+    player._lg_display.presentation_active = True
+    assert player.source == "Mediaplayer"
+    await player._async_check_standby()
+    player._lg_display.async_power_off.assert_not_awaited()
+    player._linked_source_list = ["Netflix"]
+    player._current_input_id = player._linked_input_id
+    mapping = player._linked_source_display_map()
+    name = next(k for k, v in mapping.items() if v == "Netflix")
+    await player.async_select_source(name)
+    player._lg_display.async_set_input.assert_awaited_once_with(player._linked_input_id)
+
+
+async def test_media_view_label_collision_and_failed_selection_keep_previous_source(
+    player,
+):
+    from homeassistant.exceptions import HomeAssistantError
+
+    player._lg_display.media_view_available = True
+    player._sources = {"Mediaplayer": 0x90, "Mediaplayer (App)": 0x91}
+    assert player.media_view_source == "Mediaplayer (App) (App)"
+    player._lg_display.async_select_media_view = AsyncMock(
+        side_effect=HomeAssistantError("No app")
+    )
+    previous = player.source
+    with pytest.raises(HomeAssistantError):
+        await player.async_select_source(player.media_view_source)
+    assert player.source == previous
