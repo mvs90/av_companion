@@ -271,3 +271,44 @@ async def test_media_view_label_collision_and_failed_selection_keep_previous_sou
     with pytest.raises(HomeAssistantError):
         await player.async_select_source(player.media_view_source)
     assert player.source == previous
+
+
+async def test_custom_view_sources_follow_lg_ids_rename_and_leave_for_linked_apps(
+    player,
+):
+    player._lg_display.view_sources = {
+        "dashboard": "Dashboard",
+        "pip_view": "Dashboard PiP",
+        "view_morning": "Mein Morgen",
+    }
+    player._lg_display.active_view = None
+    player._lg_display.async_select_view = AsyncMock()
+    assert "Mein Morgen" in player.source_list
+    await player.async_select_source("Mein Morgen")
+    player._lg_display.async_select_view.assert_awaited_once_with("view_morning")
+    player._async_call_linked_service.assert_not_awaited()
+    player._lg_display.active_view = "view_morning"
+    player._lg_display.presentation_active = True
+    player._lg_display.view_sources["view_morning"] = "Mein Abend"
+    assert player.source == "Mein Abend" and "Mein Morgen" not in player.source_list
+    await player._async_check_standby()
+    player._lg_display.async_power_off.assert_not_awaited()
+    player._linked_source_list = ["Netflix"]
+    player._current_input_id = player._linked_input_id
+    name = next(
+        k for k, v in player._linked_source_display_map().items() if v == "Netflix"
+    )
+    await player.async_select_source(name)
+    player._lg_display.async_set_input.assert_awaited_once_with(player._linked_input_id)
+
+
+def test_custom_view_names_do_not_hide_hdmi_or_linked_sources(player):
+    player._sources = {"Dashboard": 0x90, "Dashboard (App)": 0x91}
+    player._lg_display.view_sources = {
+        "dashboard": "Dashboard",
+        "view_one": "Dashboard",
+        "view_two": "Dashboard (App)",
+    }
+    names = player.app_view_sources
+    assert len(set(names.values())) == 3
+    assert not set(names.values()) & set(player._sources)

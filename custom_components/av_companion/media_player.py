@@ -566,23 +566,42 @@ class AVMediaPlayer(ExtendedControls, MediaPlayerEntity):
         return self._is_muted
 
     @property
+    def app_view_sources(self):
+        available = getattr(self._lg_display, "view_sources", None)
+        if not isinstance(available, dict):
+            return {}
+        used = set(self._sources) | set(self._linked_source_display_map())
+        result = {}
+        for identifier, label in available.items():
+            name = label
+            while name in used:
+                name += " (App)"
+            used.add(name)
+            result[identifier] = name
+        return result
+
+    @property
     def dashboard_source(self) -> Optional[str]:
         # Optional API extension: AV remains compatible with LG 2.0/API v1.
         if getattr(self._lg_display, "dashboard_available", False) is not True:
             return None
-        return self._app_source_name("Dashboard")
+        return self.app_view_sources.get(
+            "dashboard", self._app_source_name("Dashboard")
+        )
 
     @property
     def pip_source(self) -> Optional[str]:
         if getattr(self._lg_display, "pip_available", False) is not True:
             return None
-        return self._app_source_name("PiP")
+        return self.app_view_sources.get("pip_view", self._app_source_name("PiP"))
 
     @property
     def media_view_source(self) -> Optional[str]:
         if getattr(self._lg_display, "media_view_available", False) is not True:
             return None
-        return self._app_source_name("Mediaplayer")
+        return self.app_view_sources.get(
+            "media_view", self._app_source_name("Mediaplayer")
+        )
 
     def _app_source_name(self, name):
         used = set(self._sources) | set(self._linked_source_display_map())
@@ -592,6 +611,9 @@ class AVMediaPlayer(ExtendedControls, MediaPlayerEntity):
 
     @property
     def source(self) -> Optional[str]:
+        active = getattr(self._lg_display, "active_view", None)
+        if isinstance(active, str) and active in self.app_view_sources:
+            return self.app_view_sources[active]
         if getattr(self._lg_display, "media_view_active", False) is True:
             return self.media_view_source
         if getattr(self._lg_display, "pip_active", False) is True:
@@ -609,6 +631,11 @@ class AVMediaPlayer(ExtendedControls, MediaPlayerEntity):
             display_sources.append(self.pip_source)
         if self.media_view_source:
             display_sources.append(self.media_view_source)
+        display_sources.extend(
+            name
+            for name in self.app_view_sources.values()
+            if name not in display_sources
+        )
         linked_sources = list(self._linked_source_display_map().keys())
         if not linked_sources:
             return display_sources
@@ -1712,6 +1739,7 @@ class AVMediaPlayer(ExtendedControls, MediaPlayerEntity):
             and source != self.dashboard_source
             and source != self.pip_source
             and source != self.media_view_source
+            and source not in self.app_view_sources.values()
         ):
             raise HomeAssistantError("Unknown source")
         await self._async_cancel_wake()
@@ -1719,8 +1747,17 @@ class AVMediaPlayer(ExtendedControls, MediaPlayerEntity):
         if await self._lg_display.async_get_power_status(use_cache=False) is not True:
             raise HomeAssistantError("Display did not become ready")
         self._standby_guard.reset()
-        if source in (self.dashboard_source, self.pip_source, self.media_view_source):
-            if source == self.media_view_source:
+        view_id = next(
+            (key for key, name in self.app_view_sources.items() if source == name), None
+        )
+        if view_id is not None or source in (
+            self.dashboard_source,
+            self.pip_source,
+            self.media_view_source,
+        ):
+            if view_id is not None:
+                await self._lg_display.async_select_view(view_id)
+            elif source == self.media_view_source:
                 await self._lg_display.async_select_media_view()
             elif source == self.pip_source:
                 await self._lg_display.async_select_pip()
@@ -1755,6 +1792,7 @@ class AVMediaPlayer(ExtendedControls, MediaPlayerEntity):
             and getattr(self._lg_display, "dashboard_active", False) is not True
             and getattr(self._lg_display, "pip_active", False) is not True
             and getattr(self._lg_display, "media_view_active", False) is not True
+            and not isinstance(getattr(self._lg_display, "active_view", None), str)
         )
         if not switched_to_linked_input:
             switched_to_linked_input = await self._lg_display.async_set_input(

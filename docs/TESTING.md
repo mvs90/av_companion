@@ -60,3 +60,9 @@ This validates service execution, device responses, state restoration and a capt
 ## Remaining device-dependent limits
 
 A real Apple Home/iPhone pairing, actual tvOS/Sonos service behavior, USB boot-image import and a physical boot with that image were not repeated by these tests. The AX310 standby behavior is the owner's observed wiring behavior; no new mains-loss experiment was performed. Other LG models/firmware require their own acceptance. HDMI signal retained by an extractor plus false player idle is inherently ambiguous; the default policy does not force off a valid signal. Native live video capture and network installation of a custom boot logo are not claimed.
+
+## 1.4.0 dynamic-source acceptance — 2026-10-05
+
+97 tests pass on HA 2025.3.4/Python 3.13 and HA 2026.9.4/Python 3.14. Coverage includes LG 2.14 optional API support, custom-source routing by stable ID, collision-safe labels, direct-source reflection, renamed sources, linked HDMI exit and standby protection.
+
+A temporary AV entry in the existing HA 2026.9.4 container selected a custom Studio view on the physical LG. Renaming updated the combined source live; selection survived a container restart; deleting the active view returned both entities to Dashboard and removed the source. The temporary AV entry/view were removed and the original Dashboard PiP source restored. No Sonos playback command was sent; actual Apple Home pairing was not tested.

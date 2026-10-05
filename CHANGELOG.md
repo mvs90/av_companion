@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.0
+
+- Consume LG 2.14 dynamic Studio sources through the optional public API v1 extension. Expose fixed Dashboard, Dashboard PiP and Mediaplayer plus each saved custom view on the combined player and HomeKit source list.
+- Route stable view IDs, follow direct LG selection and renames, avoid source-name collisions, leave custom views for linked HDMI selections and preserve standby guards. Remain compatible with earlier LG API v1 installations.
+
 ## 1.3.0
 
 - Expose the optional LG 2.12 Mediaplayer source on the combined player and its HomeKit input list. Select it through public API v1 without starting a linked player.

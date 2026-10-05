@@ -34,3 +34,7 @@ Die Steckdose wird erst nach einer frischen Aus-Bestätigung des LG abgeschaltet
 Für native Textüberblendungen `lg_rs232_ip.show_toast` am LG-Mediaplayer verwenden. Passwort, Zertifikat, OSD, Bootlogo und Vorschau werden ausschließlich in der LG-Integration eingerichtet.
 
 [Ausführliche Aktionsbeispiele](FEATURES.md) · [Standby-Regeln](STANDBY.md) · [Prüfbericht](TESTING.md).
+
+### Studio-Quellen ab AV Companion 1.4 / LG 2.14
+
+Dashboard, Dashboard PiP, Mediaplayer und alle zusätzlich gespeicherten Studio-Ansichten erscheinen automatisch als Quellen am kombinierten Player. Namen folgen Änderungen im Studio; die interne Kennung bleibt gleich. Wird die aktive eigene Ansicht gelöscht, folgt Dashboard. Der vorhandene Standby-Schutz gilt auch für eigene Ansichten. Ältere LG-Versionen bleiben unterstützt.

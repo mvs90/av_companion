@@ -2,7 +2,7 @@
 
 Combine an LG professional display, an optional player such as Apple TV, a sound system such as Sonos, and a display-only power socket into **one Home Assistant TV media player**. Uses the devices' existing HA integrations; it does not implement their network protocols.
 
-Requires [LG Professional Display 2.0.0 or later](https://github.com/mvs90/lg_rs232_ip) (public API v1) and Home Assistant 2025.3 or later. Each LG display can have one AV system. All other devices are optional. Version **1.2.0** is a fresh setup without prototype migration.
+Requires [LG Professional Display 2.0.0 or later](https://github.com/mvs90/lg_rs232_ip) (public API v1) and Home Assistant 2025.3 or later. Each LG display can have one AV system. All other devices are optional. Version **1.4.0** is a fresh setup without prototype migration.
 
 [Deutsche Anleitung](docs/README.de.md) · [Actions and examples](docs/FEATURES.md) · [Standby behavior](docs/STANDBY.md) · [MIT license](LICENSE)
 
@@ -65,3 +65,7 @@ With **LG 2.10.0** and **AV Companion 1.2.0**, **PiP** also appears as a persist
 ### Full-screen media source
 
 AV Companion 1.3.0 exposes **Mediaplayer** when LG Professional Display 2.12.0 provides the optional resident music view. Configure its player and design in LG Display Studio. Selecting this source does not start the linked Apple TV/player. Active view protection prevents automatic shutdown based on an idle HDMI source. The input is also exposed through the combined player to HomeKit; older LG versions continue without the additional source.
+
+### All Studio sources (1.4)
+
+With LG 2.14, the combined player automatically includes **Dashboard**, **Dashboard PiP**, **Mediaplayer** and every additional saved Studio view. Renames follow stable view IDs; labels remain unique against HDMI and player apps. Removing an active custom view returns to Dashboard. View selection retains the existing supply, acknowledgement and standby safeguards and does not start a linked player. These sources are exposed to HomeKit through the combined entity; actual Apple Home pairing is an installation acceptance step.
