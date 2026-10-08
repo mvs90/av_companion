@@ -1,4 +1,4 @@
-# AV Companion 1.0
+# AV Companion
 
 Die optionale Erweiterung fasst LG, Apple TV oder einen anderen Zuspieler, Sonos/Soundsystem und eine Display-Steckdose in einem gemeinsamen TV-Mediaplayer zusammen. Die eigentlichen Geräteintegrationen bleiben erforderlich.
 
@@ -8,6 +8,8 @@ Die optionale Erweiterung fasst LG, Apple TV oder einen anderen Zuspieler, Sonos
 2. `https://github.com/mvs90/av_companion` in HACS als benutzerdefiniertes Repository der Kategorie **Integration** hinzufügen, herunterladen und HA neu starten.
 3. **AV Companion** hinzufügen und das LG auswählen. Pro LG ist ein AV-System erlaubt.
 4. Unter **Konfigurieren** die gewünschten Zusatzgeräte zuordnen. Auch nur „LG + Zuspieler“ oder „LG + Lautstärkegerät“ funktioniert.
+
+AV Companion erscheint unter **Einstellungen → Geräte & Dienste → Integrationen**. Im Reiter **Geräte** steht das gemeinsame AV-System unter dem vergebenen Namen, etwa „Wohnzimmer AV“. Ab Version 1.4.1 wird die Erweiterung als Geräteintegration eingeordnet. Nach dem Update HA neu starten; vorhandene Einträge, Geräte-/Entitätskennungen und Einstellungen bleiben erhalten.
 
 Für Apple TV die vorhandene `remote`-Entität auswählen und den Strommodus **apple_tv** verwenden (`wakeup`/`suspend`). Für Sonos den Lautstärke-Mediaplayer sowie optional Nachtmodus/Sprachverbesserung zuweisen. Lautstärkerouting ist am gekoppelten Eingang, immer oder nur am Display möglich. TV-Eingang des Soundsystems kann beim ausdrücklichen Einschalten gewählt werden.
 

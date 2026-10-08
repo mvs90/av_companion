@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.1
+
+- Classify each combined AV system as a device integration so AV Companion appears in the normal Integrations overview and Add integration flow. It was previously categorized as a helper.
+- Preserve existing config entries, device/entity IDs and settings. Restart Home Assistant after updating; no reconfiguration is required.
+
 ## 1.4.0
 
 - Consume LG 2.14 dynamic Studio sources through the optional public API v1 extension. Expose fixed Dashboard, Dashboard PiP and Mediaplayer plus each saved custom view on the combined player and HomeKit source list.

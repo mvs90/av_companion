@@ -2,7 +2,7 @@
 
 Combine an LG professional display, an optional player such as Apple TV, a sound system such as Sonos, and a display-only power socket into **one Home Assistant TV media player**. Uses the devices' existing HA integrations; it does not implement their network protocols.
 
-Requires [LG Professional Display 2.0.0 or later](https://github.com/mvs90/lg_rs232_ip) (public API v1) and Home Assistant 2025.3 or later. Each LG display can have one AV system. All other devices are optional. Version **1.4.0** is a fresh setup without prototype migration.
+Requires [LG Professional Display 2.0.0 or later](https://github.com/mvs90/lg_rs232_ip) (public API v1) and Home Assistant 2025.3 or later. Each LG display can have one AV system. All other devices are optional. Current version: **1.4.1**.
 
 [Deutsche Anleitung](docs/README.de.md) · [Actions and examples](docs/FEATURES.md) · [Standby behavior](docs/STANDBY.md) · [MIT license](LICENSE)
 
@@ -12,6 +12,8 @@ Requires [LG Professional Display 2.0.0 or later](https://github.com/mvs90/lg_rs
 2. In HACS add `https://github.com/mvs90/av_companion` as a custom repository, category **Integration**. Download and restart HA.
 3. Add **AV Companion** under Settings → Devices & services; select the LG display entity.
 4. Configure optional player/remote, volume player, sound-mode switches, socket and display-only power sensor.
+
+AV Companion appears under **Settings → Devices & services → Integrations**. The **Devices** tab lists each combined AV system under its chosen name, such as “Living room AV”. Updating from 1.4.0 preserves existing entries, device/entity IDs and settings; restart Home Assistant to apply the corrected integration classification.
 
 HACS requires one integration per repository. Both packages must be installed separately; the HA dependency declaration controls loading, not automatic HACS installation. Neither package is currently in the default HACS catalogue. Manual install: copy `custom_components/av_companion` alongside `custom_components/lg_rs232_ip`.
 

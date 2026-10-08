@@ -1,5 +1,11 @@
 # Split release acceptance — 2026-10-02
 
+## 1.4.1 integration visibility — 2026-10-08
+
+**103 tests pass on HA 2025.3.4 and HA 2026.9.4 with LG 2.31.0; Ruff passes.** This release changes the manifest classification from `helper` to `device` so each combined AV system appears in the normal Integrations overview.
+
+Installed in the existing HA 2026.9.4 Docker instance and verified after restart: AV Companion is visible in the Integrations overview, the existing AV entry loads, and its configuration, device ID and all three entity registry IDs are preserved. All other configured integrations, including Apple TV, remain loaded; the Apple TV discovery helper is healthy. No device or integration was recreated.
+
 ## Regression audit — 2026-10-08
 
 **103 tests pass in all four combinations of HA 2025.3.4/2026.9.4 and LG 2.0.0/2.30.2.** CI now retains both the minimum and current LG dependency checks. Six new harness tests require unique reserved lab names, reject missing/duplicate names and exclude unrelated domains/installations. AV runtime code and release version remain 1.4.0.
