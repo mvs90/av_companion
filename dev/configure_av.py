@@ -1,5 +1,6 @@
 import asyncio, os
 import aiohttp
+from lab_scope import lab_entry
 
 BASE = os.environ.get("HA_URL", "http://127.0.0.1:8123")
 
@@ -25,6 +26,8 @@ async def main():
             return await req("GET", "/api/states/" + entity)
 
         entries = await req("GET", "/api/config/config_entries/entry")
+        lab_entry(entries, "lg_rs232_ip")
+        lab_entry(entries, "av_companion", required=False)
         if not any(e["domain"] == "av_test_lab" for e in entries):
             result = await req(
                 "POST", "/api/config/config_entries/flow", {"handler": "av_test_lab"}
@@ -32,7 +35,7 @@ async def main():
             print("fixture flow", result.get("type"), result.get("errors"), flush=True)
         await service("media_player", "turn_on", "media_player.av_test_source")
         entries = await req("GET", "/api/config/config_entries/entry")
-        av = next((e for e in entries if e["domain"] == "av_companion"), None)
+        av = lab_entry(entries, "av_companion", required=False)
         if av is None:
             flow = await req(
                 "POST", "/api/config/config_entries/flow", {"handler": "av_companion"}

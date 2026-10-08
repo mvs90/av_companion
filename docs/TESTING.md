@@ -1,5 +1,13 @@
 # Split release acceptance — 2026-10-02
 
+## Regression audit — 2026-10-08
+
+**103 tests pass in all four combinations of HA 2025.3.4/2026.9.4 and LG 2.0.0/2.30.2.** CI now retains both the minimum and current LG dependency checks. Six new harness tests require unique reserved lab names, reject missing/duplicate names and exclude unrelated domains/installations. AV runtime code and release version remain 1.4.0.
+
+The existing **unifi-air-quality-ha-dev / HA 2026.9.4** passed all **14** full acceptance-harness scenarios against LG 2.30.2, using the local TCP simulator and fixture player, sound system and display socket. This includes real timer windows for valid-signal idle, stale idle plus no signal, LG-before-socket shutdown, no stale re-wake, explicit wake, source guards, service/HomeKit-event routing, duplicate ownership, unload/reload and entity rename. Entries were selected by their exact lab names before any unload; the harness now enforces this scope itself.
+
+All temporary entries and the copied fixture were removed, and the simulator stopped. After HA restart the original entries and UniFi integration remained loaded. The physical LG's settings and Studio configuration were unchanged, and its Mediaplayer app remained connected. See the LG [test matrix and hardware limits](https://github.com/mvs90/lg_rs232_ip/blob/main/docs/TEST-MATRIX.md). These simulator tests do not pair Apple Home or reproduce physical tvOS/Sonos/AX310 firmware and CEC behaviour.
+
 ## AV 1.2.0 / LG 2.10.0 — 2026-10-04
 
 **93 tests pass on HA 2025.3.4/Python 3.13 and HA 2026.9.4/Python 3.14.** Added coverage checks optional PiP availability, non-colliding source names, failure preserving the previous source, selection without waking the linked player, direct LG source reflection, standby protection and leaving PiP for a player app even when its HDMI input is cached. CI retains import compatibility with LG 2.0.0/API v1.

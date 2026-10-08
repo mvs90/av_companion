@@ -1,6 +1,7 @@
 import asyncio, json, time, os
 from pathlib import Path
 import aiohttp
+from lab_scope import lab_entry
 
 BASE = os.environ.get("HA_URL", "http://127.0.0.1:8123")
 LG = "media_player.lg_split_test_display"
@@ -72,6 +73,10 @@ async def main():
                     result = await channel.receive_json()
                     assert result["success"], result
                     return result.get("result")
+
+            entries = await req("GET", "/api/config/config_entries/entry")
+            lab_entry(entries, "lg_rs232_ip")
+            lab_entry(entries, "av_companion")
 
             if not os.environ.get("SKIP_STANDBY"):
                 await sim(power=True, input=144, signal=True)
@@ -157,8 +162,8 @@ async def main():
                 await sim(signal=True)
                 await svc("media_player", "select_source", AV, source="HDMI 1")
             entries = await req("GET", "/api/config/config_entries/entry")
-            lg = next(e for e in entries if e["domain"] == "lg_rs232_ip")
-            av = next(e for e in entries if e["domain"] == "av_companion")
+            lg = lab_entry(entries, "lg_rs232_ip")
+            av = lab_entry(entries, "av_companion")
             await wsreq(
                 "config_entries/disable", entry_id=lg["entry_id"], disabled_by="user"
             )
