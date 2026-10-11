@@ -35,6 +35,12 @@ homekit:
 
 Do not configure the same accessory twice through UI and YAML. A real Apple Home pairing is a separate installation acceptance step; automated event-routing tests do not establish iPhone pairing.
 
+## App metadata fallback
+
+When an app such as Netflix supplies no programme title or cover, the combined AV player exposes the current app name and logo instead. Title and artwork are evaluated independently; each genuine value takes precedence as soon as the source integration provides it again. While metadata is incomplete, the artist line shows the reported playback status unless a real artist is available. `idle` remains “Leerlauf”/“Idle”; it is not treated as proof of pause. Existing Display Studio media widgets and the combined HA/HomeKit player receive these values automatically.
+
+App icons are retrieved on demand using the public bundle ID and HA country from Apple's App Store lookup service. Only those public lookup parameters are sent; playback titles, tokens and device credentials are not. Up to 32 icons (256 px) remain cached locally across restarts, with bounded requests and retries. Cached icons work offline. Apps absent from that catalogue or an unsuccessful first lookup receive a neutral badge with initials; no guessed logo is assigned. Sonos music keeps its own title/artwork; Sonos TV audio follows the linked video player.
+
 ## Reliable standby and power
 
 False Apple TV `idle` is checked against repeated LG HDMI-signal observations, fresh input/power verification and optional display-only consumption evidence. Unknown status is never confirmed off. Default thresholds are 15 seconds without signal and 900 seconds idle when signal status is unknown. A valid signal blocks the idle fallback. If the extractor preserves a valid signal while Apple TV falsely reports idle, the state remains ambiguous. [All stages, limits and timing](docs/STANDBY.md).

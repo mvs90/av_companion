@@ -52,6 +52,7 @@ async def test_real_play_transition_can_wake(player):
             "new_state": State("media_player.apple_tv", "playing"),
         }
     )
+    player._test_states["media_player.apple_tv"] = event.data["new_state"]
     await player._async_handle_linked_state_change(event)
     player._start_display_wake_task.assert_called_once()
 

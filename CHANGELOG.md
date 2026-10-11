@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.6.1
+
+- Recover a recently disconnected player after automatic signal-loss standby, including `off → unknown → idle` during an Apple TV reboot. Serialize genuine wake events behind an in-flight off command; cancel superseded intent on explicit controls, lock, stop, changed playback or protected presentations. Startup/attribute-only/stale polling cannot wake the display.
+- Automatic confirmed no-signal shutdown no longer suspends a rebooting player or forwards a duplicate off on subsequent polls. Keep explicit user shutdown and unknown-signal protections.
+- Independently fall back to the current app name and App Store icon when title/artwork are absent. Include the reported playback state when metadata is incomplete, preserve real artists and immediately prefer real metadata when it returns. Artwork follows the audible player, including Sonos TV/music routing.
+- Fetch icons on demand by exact public bundle ID, cache up to 32 small icons across restarts, and use a neutral app badge when unavailable. No viewing titles, account data or device credentials leave HA.
+
 ## 1.6.0
 
 - Add Sonos and PiP Sonos sources, route music metadata, artwork and transport to the sound-system player across HDMI and persistent app views; use Apple TV metadata for Sonos TV audio. Preserve pause/resume routing and authenticated artwork retrieval.

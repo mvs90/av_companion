@@ -1,5 +1,13 @@
 # Split release acceptance — 2026-10-02
 
+## 1.6.1 restart recovery and app metadata — 2026-10-12
+
+**290 tests pass** on HA 2026.9.4/Python 3.14, HA 2025.3.4/Python 3.13, and the minimum LG 2.0 API. Added coverage includes observed runtime reconnect before/after automatic shutdown, queued wake during an in-flight off, explicit-off supersession, startup/restored/expired/locked/stop/presentation guards, later inactive state, attribute updates during power I/O, duplicate-off prevention, pending wake polling, independent title/artwork combinations, reported status, Sonos target changes, late logo responses, real-cover recovery and bounded persistent/negative artwork caching.
+
+Seven focused acceptance checks passed in the **existing HA 2026.9.4 Docker instance** using actual config flows, registered fixture services and a TCP LG simulator: Netflix app name/status and real 256 px App Store icon through HA's authenticated artwork proxy; immediate replacement by a real title/cover; honest idle status; 15-second no-signal shutdown without suspending the rebooting source; `off → unknown → idle` restoring socket/display during suppression; a playing event during a two-second OFF acknowledgement; and explicit-off echo protection. The retrieved Netflix icon was visually inspected. Temporary lab entries and the fixture were removed afterward.
+
+The user's recorded reboot sequence was player off at 23:48:44, display off at 23:49:11, then player unknown → idle at 23:49:40 (local time, 2026-10-11). This exact event pattern is now covered. The real Apple TV was **not rebooted again** for acceptance. Read-only verification after installation confirmed real programme title/artwork and playing state still flow through the combined AV entity, Sonos remains on TV audio, the resident app displays HDMI 1 fullscreen and Alert Status is OK. LG 2.33.0, Studio 1.4.0 and their saved settings remain unchanged.
+
 ## 1.6.0 audio routing and named notices — 2026-10-11
 
 226 tests pass on HA 2026.9.4/Python 3.14. The same suite is exercised on HA 2025.3.4 and against the minimum LG 2.0 API. Coverage adds Sonos music/TV/HTA-stream/paused/unavailable across HDMI and every persistent view; metadata, authenticated art, controls, pause/resume, audio play_media without input switching, optional TV selection on HDMI only, independent PiP view selection/deletion, source collisions, named alerts/countdowns, and presentation power protection with live Apple TV metadata.

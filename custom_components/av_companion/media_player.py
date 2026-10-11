@@ -37,6 +37,8 @@ from .standby import PowerStateConflict, StandbyGuard
 from .standby_notice import StandbyCountdown
 from .controls import ExtendedControls
 from .audio import AudioRouting
+from .recovery import RestartRecovery
+from .metadata import PlaybackMetadata
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import entity_platform
 import voluptuous as vol
@@ -199,7 +201,12 @@ async def async_setup_entry(
 
 
 class AVMediaPlayer(
-    AudioRouting, StandbyCountdown, ExtendedControls, MediaPlayerEntity
+    RestartRecovery,
+    PlaybackMetadata,
+    AudioRouting,
+    StandbyCountdown,
+    ExtendedControls,
+    MediaPlayerEntity,
 ):
     """Media player entity for LG professional displays."""
 
@@ -256,6 +263,7 @@ class AVMediaPlayer(
         self._display_unresponsive_since: Optional[float] = None
         self._suppress_linked_power_on_until: float = 0.0
 
+        self._init_recovery()
         self._init_controls()
         self._init_standby_countdown()
         self._standby_guard = StandbyGuard()
@@ -686,36 +694,12 @@ class AVMediaPlayer(
         return combined_sources
 
     @property
-    def media_title(self):
-        return self._playback_attribute("media_title")
-
-    @property
-    def media_artist(self):
-        return self._playback_attribute("media_artist")
-
-    @property
     def media_album_name(self):
         return self._playback_attribute("media_album_name")
 
     @property
     def media_content_type(self):
         return self._playback_attribute("media_content_type")
-
-    @property
-    def media_image_url(self):
-        return self._playback_attribute("entity_picture")
-
-    async def async_get_media_image(self):
-        # Fetch through the original entity, including authenticated Apple TV art.
-        component = self.hass.data.get("media_player")
-        target = (
-            component.get_entity(self._playback_target)
-            if component and self._playback_target
-            else None
-        )
-        if target is None or target is self:
-            return None, None
-        return await target.async_get_media_image()
 
     async def async_added_to_hass(self) -> None:
         @callback
@@ -1461,6 +1445,7 @@ class AVMediaPlayer(
         new_state_restored = _is_restored_state(new_state)
 
         now = time.monotonic()
+        reconnect = self._observe_linked_reconnect(old_state_obj, new_state)
         if old_state != new_state.state or new_state_restored:
             self._standby_guard.reset()
         self._update_linked_cache_from_state()
@@ -1541,15 +1526,17 @@ class AVMediaPlayer(
             # repeated false off report must never bypass the signal guard.
             await self._async_check_standby()
         elif new_state.state in _LINKED_ACTIVE_STATES:
-            # Attribute-only idle updates and restored states are not wake intent.
+            # A short, observed runtime reconnect is distinct from HA startup
+            # or an attribute-only update to stale playback data.
             if (
                 new_state_restored
                 or old_state_restored
                 or old_state is None
-                or old_state in _UNAVAILABLE_STATES
                 or old_state == new_state.state
+                or (old_state in _UNAVAILABLE_STATES and not reconnect)
                 or (
                     new_state.state == STATE_IDLE
+                    and not reconnect
                     and (
                         self._standby_latched
                         or old_state not in _LINKED_INACTIVE_STATES
@@ -1558,27 +1545,7 @@ class AVMediaPlayer(
             ):
                 self.async_write_ha_state()
                 return
-            self._standby_latched = False
-            display_power = await self._lg_display.async_get_power_status()
-            self._log_power_sync(
-                "linked active observed",
-                old_state=old_state,
-                new_state=new_state.state,
-                display_power=display_power,
-            )
-            if self._linked_power_on_suppressed:
-                self._log_power_sync(
-                    "skip linked active wake: off transition still in progress",
-                    old_state=old_state,
-                    new_state=new_state.state,
-                )
-            elif display_power is not True:
-                self._state = MediaPlayerState.ON
-                self._pending_state = MediaPlayerState.ON
-                self._pending_state_until = (
-                    time.monotonic() + self._pending_power_seconds
-                )
-                self._start_display_wake_task("linked active event")
+            await self._async_linked_wake(new_state)
 
         self.async_write_ha_state()
 
@@ -1590,6 +1557,7 @@ class AVMediaPlayer(
         self._display_wake_task = None
 
     async def async_turn_on(self) -> None:
+        self._clear_restart_recovery()
         await self._async_cancel_presentations()
         async with self._control_lock:
             await self._async_turn_on_locked()
@@ -1607,6 +1575,7 @@ class AVMediaPlayer(
         self.async_write_ha_state()
 
     async def async_turn_off(self) -> None:
+        self._clear_restart_recovery()
         await self._async_cancel_presentations()
         await self._lg_display.async_clear_content()
         async with self._control_lock:
@@ -1614,7 +1583,11 @@ class AVMediaPlayer(
             await self._async_cancel_wake()
             await self._async_turn_off_locked()
 
-    async def _async_turn_off_locked(self) -> None:
+    async def _async_turn_off_locked(self, *, no_signal: bool = False) -> None:
+        if no_signal:
+            self._auto_standby_until = time.monotonic() + 180
+        else:
+            self._clear_restart_recovery()
         self._standby_latched = True
         self._standby_guard.reset()
         self._log_power_sync("local media_player turn_off requested")
@@ -1627,8 +1600,15 @@ class AVMediaPlayer(
             self._state = MediaPlayerState.OFF
             self._pending_state = MediaPlayerState.OFF
             self._pending_state_until = time.monotonic() + self._pending_power_seconds
-            await self._async_remote_power(False)
-            self._schedule_power_supply_off("explicit confirmed off")
+            # This is our own confirmed off, not a second external off event.
+            self._last_display_power = False
+            self._display_off_confirm_count = 0
+            self._display_off_forwarded = True
+            # Signal loss can be a reboot. Do not send a returning player back
+            # into standby, nor queue a power command while it is disconnected.
+            if not no_signal:
+                await self._async_remote_power(False)
+            self._schedule_power_supply_off("confirmed off")
             self.async_write_ha_state()
         else:
             self._report_issue(
@@ -1704,6 +1684,7 @@ class AVMediaPlayer(
             self.async_write_ha_state()
 
     async def async_select_source(self, source: str) -> None:
+        self._clear_restart_recovery()
         await self._async_cancel_presentations()
         await self._lg_display.async_clear_content()
         async with self._control_lock:
@@ -1990,7 +1971,7 @@ class AVMediaPlayer(
         # LG also rejects a presentation that starts while its command lock is
         # pending. Explicit user turn_off remains independent of signal evidence.
         await self._async_cancel_wake()
-        await self._async_turn_off_locked()
+        await self._async_turn_off_locked(no_signal=reason == "no_signal")
 
     async def async_media_play(self) -> None:
         await self._async_playback_action("media_play", MediaPlayerEntityFeature.PLAY)
@@ -2080,7 +2061,7 @@ class AVMediaPlayer(
                     self._last_standby_reason = "pip_no_signal_view"
                 else:
                     await self._async_cancel_wake()
-                    await self._async_turn_off_locked()
+                    await self._async_turn_off_locked(no_signal=True)
                     if self._state == MediaPlayerState.OFF:
                         self._last_standby_reason = "pip_no_signal_off"
                 self._pip_standby_guard.reset()
@@ -2101,6 +2082,8 @@ class AVMediaPlayer(
             self._sync_standby_countdown()
 
     async def _async_update_state(self) -> None:
+        if self._control_lock.locked():
+            return
         if (
             self._pip_signal_context()
             and not self._ha_stopping
@@ -2120,7 +2103,12 @@ class AVMediaPlayer(
         self._update_volume_cache_from_state()
         now = time.monotonic()
 
+        pending_until = self._pending_state_until
         power = await self._lg_display.async_get_power_status()
+        if self._control_lock.locked() or pending_until != self._pending_state_until:
+            # The observation belongs to a command that has since been
+            # superseded; do not interpret it as a fresh external power event.
+            return
         if power is None:
             self._standby_guard.reset()
             self._reset_power_state_conflict()
@@ -2193,6 +2181,11 @@ class AVMediaPlayer(
             self._display_off_confirm_count = 0
             self._display_off_forwarded = False
         elif power is False:
+            if self._pending_state == MediaPlayerState.ON or (
+                self._display_wake_task is not None
+                and not self._display_wake_task.done()
+            ):
+                return
             if self._last_display_power is True:
                 self._display_off_confirm_count = 1
                 self._display_off_forwarded = False

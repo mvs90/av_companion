@@ -36,6 +36,8 @@ async def handle(reader, writer):
             }
             if cmd in settings:
                 key = settings[cmd]
+                if cmd == "ka" and value == "00":
+                    await asyncio.sleep(state.get("off_delay", 0))
                 if value != "ff":
                     state[key] = int(value, 16)
                 result = f"{int(state.get(key, 0)):02x}"
@@ -70,6 +72,10 @@ async def handle(reader, writer):
 async def control(request):
     if request.method == "POST":
         values = await request.json()
+        if "off_delay" in values:
+            state["off_delay"] = max(0, min(2, float(values["off_delay"])))
+        if values.get("clear_commands"):
+            state["commands"].clear()
         for key in ("power", "input", "signal", "volume", "mute"):
             if key in values:
                 state[key] = values[key]

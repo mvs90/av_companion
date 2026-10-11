@@ -17,3 +17,6 @@ lg_display_test_results_*.json
 .test-dependencies/
 
 /dev/results.json
+
+/dev/recovery-results.json
+/dev/netflix-fallback.png
