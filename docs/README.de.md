@@ -17,7 +17,7 @@ In HomeKit Bridge **Accessory/Einzelgerät** wählen und nur den gemeinsamen AV-
 
 ## Standby
 
-Die Erweiterung prüft echten Zuspieler-Standby, anhaltenden LG-Signalverlust (standardmäßig 120 Sekunden), optional den Verbrauch ausschließlich des LG sowie eine Idle-Rückfallebene bei unbekanntem Signal (900 Sekunden). Ein gültiges HDMI-Signal verhindert die Idle-Rückfallebene. Bei falschem Idle und weiterhin gültigem Signal bleibt die Situation mehrdeutig. Netzwerkfehler sind niemals bestätigtes Standby.
+Auch „aus“ oder „Standby“ des Zuspielers muss durch fehlendes HDMI-Signal bestätigt werden. Ein vorhandenes Signal verhindert die automatische Abschaltung; ein unbekanntes Signal bestätigt keinen Aus-Zustand. Die Erweiterung prüft anhaltenden LG-Signalverlust (standardmäßig 120 Sekunden), optional den Verbrauch ausschließlich des LG sowie eine Idle-Rückfallebene bei unbekanntem Signal (900 Sekunden). Bei dauerhaft falschem „aus“ wird trotzdem nach bestätigtem Signalverlust abgeschaltet, ohne einen neuen Zustandswechsel abzuwarten. Die Signalverlustprüfung und ihre Wartezeit müssen dafür aktiviert sein. Manuelles Ausschalten bleibt jederzeit möglich. Ein gültiges HDMI-Signal verhindert auch die Idle-Rückfallebene. Bei falschem Idle und weiterhin gültigem Signal bleibt die Situation mehrdeutig. Netzwerkfehler sind niemals bestätigtes Standby.
 
 Die Steckdose wird erst nach einer frischen Aus-Bestätigung des LG abgeschaltet. Ein neuer Einschaltbefehl beendet geplante Abschaltung. Wartende/laufende native LG-Inhalte sperren die Standby-Automatik und verbergen Apple-TV-Metadaten. Die Diagnoseattribute erklären den jeweiligen Kandidaten und die letzte Abschaltentscheidung.
 

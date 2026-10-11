@@ -40,8 +40,11 @@ async def handle(reader, writer):
                     state[key] = int(value, 16)
                 result = f"{int(state.get(key, 0)):02x}"
             elif cmd == "sv":
+                # Unknown status must not masquerade as confirmed signal loss.
                 result = (
-                    value + ("01" if state["signal"] else "00")
+                    value + "02"
+                    if value == "02" and state["signal"] is None
+                    else value + ("01" if state["signal"] else "00")
                     if value == "02"
                     else value + "00"
                 )

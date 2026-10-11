@@ -60,7 +60,10 @@
           "sonos_speech_enhancement_entity_id": "Sonos speech enhancement switch",
           "polling_interval": "Polling interval (seconds)"
         },
-        "data_description": {}
+        "data_description": {
+          "standby_signal_check": "Required for automatic shutdown when the linked player reports off/standby. Present or unknown HDMI signal prevents that shutdown.",
+          "standby_no_signal_seconds": "Continuous signal loss before shutdown, including a player incorrectly stuck off. Default: 120 seconds. 0 disables this layer."
+        }
       }
     },
     "error": {

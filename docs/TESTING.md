@@ -1,5 +1,13 @@
 # Split release acceptance — 2026-10-02
 
+## 1.4.2 false Apple TV off protection — 2026-10-11
+
+**133 tests pass on HA 2025.3.4/Python 3.13 and HA 2026.9.4/Python 3.14 with LG 2.32.1; Ruff passes.** Both linked state events and polling now require sustained HDMI loss for `off`/`standby`. Regressions cover present/unknown/returning signal, configurable and disabled timers, idle/low-power fallback isolation, final confirmation changes, automation lock, shutdown/unload, source/wake transitions, presentation protection, queued controls and explicit user shutdown.
+
+Installed AV 1.4.2 in the existing **unifi-air-quality-ha-dev / HA 2026.9.4** instance. On the physical **LG 75UH5F-HJ**, Apple TV actually reported `off` while HDMI 1 remained active in the resident app. With the automation lock temporarily released, eight fresh AV observations over **146 seconds** all reported HDMI present, no standby candidate and LG/AV on. The original enabled lock was restored. LG and AV options, linked devices and IDs were preserved; LG 2.32.1 and Studio 1.4.0 were not replaced.
+
+All **18** acceptance scenarios passed in the same container using a separate TCP display simulator, fixture player, sound system and socket. The added cases verify a false-off event and permanently-off polling with valid HDMI, unknown signal protection, reset on returning signal, and eventual display/socket shutdown after confirmed loss while the player remains off. Existing idle fallback, source isolation, playback/volume, HomeKit event routing, unload/reload, ownership and rename checks remain successful. Physical HDMI loss and a real socket cut were not induced; those destructive transitions used fixtures. Temporary lab entries and the fixture package were removed afterwards.
+
 ## 1.4.1 integration visibility — 2026-10-08
 
 **103 tests pass on HA 2025.3.4 and HA 2026.9.4 with LG 2.31.0; Ruff passes.** This release changes the manifest classification from `helper` to `device` so each combined AV system appears in the normal Integrations overview.

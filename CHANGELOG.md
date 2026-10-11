@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.4.2
+
+- Prevent false Apple TV `off`/`standby` reports from switching off a display with an active HDMI signal. State events and polling now share continuous no-signal confirmation (default 120 seconds); unknown signal status never confirms a player-off report.
+- Still shut down on sustained, freshly confirmed HDMI loss while the player remains stuck off. Returning signal resets evidence; disabling signal checking or the no-signal timer does not fall back to trusting player-off reports. Explicit user shutdown remains available.
+- Serialize standby checks with controls and recheck automation lock, source, startup, wake and presentation protection after I/O. Update the reported signal to the final confirmation result.
+- Expand unit regressions and the existing Docker acceptance harness for false-off events, stuck-off polling, unknown/returning signal and confirmed display-before-socket shutdown.
+
 ## 1.4.1
 
 - Classify each combined AV system as a device integration so AV Companion appears in the normal Integrations overview and Add integration flow. It was previously categorized as a helper.

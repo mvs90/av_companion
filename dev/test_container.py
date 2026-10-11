@@ -161,6 +161,43 @@ async def main():
                 passed("Standby guard does not shut down a different physical input")
                 await sim(signal=True)
                 await svc("media_player", "select_source", AV, source="HDMI 1")
+                # A false off transition used to bypass the signal guard; the
+                # subsequent stuck-off state also used to win over HDMI polling.
+                await svc("media_player", "turn_off", SOURCE)
+                await asyncio.sleep(35)
+                await update()
+                assert (await state(SOURCE))["state"] == "off"
+                assert (await sim())["power"]
+                assert (await state(SOCKET))["state"] == "on"
+                passed("False player off event and stuck-off polls keep valid HDMI on")
+                await sim(signal=None)
+                await asyncio.sleep(35)
+                await update()
+                assert (await sim())["power"]
+                assert (await state(SOCKET))["state"] == "on"
+                passed("Unknown HDMI status does not confirm false player off")
+                await sim(signal=False)
+                await update()
+                await asyncio.sleep(10)
+                await sim(signal=True)
+                await update()
+                assert (await sim())["power"]
+                assert (await state(AV))["attributes"]["standby_candidate"] is None
+                passed("Returning HDMI cancels false-off shutdown evidence")
+                await sim(signal=False)
+                await expect(SOCKET, "off", 55)
+                assert not (await sim())["power"]
+                assert (await state(AV))["attributes"][
+                    "last_standby_reason"
+                ] == "no_signal"
+                passed(
+                    "Stuck-off player plus confirmed signal loss shuts LG down before socket"
+                )
+                await sim(signal=True)
+                await svc("media_player", "turn_on", AV)
+                await expect(SOCKET, "on")
+                await asyncio.sleep(4)
+                await update()
             entries = await req("GET", "/api/config/config_entries/entry")
             lg = lab_entry(entries, "lg_rs232_ip")
             av = lab_entry(entries, "av_companion")

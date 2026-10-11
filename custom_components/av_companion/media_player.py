@@ -58,7 +58,6 @@ _LINKED_INACTIVE_STATES = {
 _UNAVAILABLE_STATES = {"unavailable", "unknown"}
 
 _STARTUP_OFF_GUARD_SECONDS = 15.0
-_OFF_CONFIRM_DELAY_SECONDS = 2.0
 _DISPLAY_WAKE_TIMEOUT_SECONDS = 30.0
 _DISPLAY_UNRESPONSIVE_ALERT_DELAY_SECONDS = 10.0
 _AUTOMATION_BLOCKED_TURN_OFF_DELAY_SECONDS = 5.0
@@ -1509,55 +1508,9 @@ class AVMediaPlayer(ExtendedControls, MediaPlayerEntity):
                 self.async_write_ha_state()
                 return
 
-            # Debounce off events during startup churn: confirm state after short delay.
-            linked_entity_id = self._linked_entity_id
-            if linked_entity_id:
-                await asyncio.sleep(_OFF_CONFIRM_DELAY_SECONDS)
-                confirmed_state_obj = self.hass.states.get(linked_entity_id)
-                confirmed_state = (
-                    confirmed_state_obj.state
-                    if confirmed_state_obj is not None
-                    else None
-                )
-                if confirmed_state not in _LINKED_INACTIVE_STATES:
-                    self._log_power_sync(
-                        "skip linked off: off not confirmed after delay",
-                        old_state=old_state,
-                        initial_new_state=new_state.state,
-                        confirmed_state=confirmed_state,
-                        delay_seconds=_OFF_CONFIRM_DELAY_SECONDS,
-                    )
-                    self.async_write_ha_state()
-                    return
-
-            if (
-                self._ha_stopping
-                or self._any_presentation_active
-                or not self._sync_automation_enabled
-            ):
-                return
-            if await self._lg_display.async_get_input() != self._linked_input_id:
-                return
-            display_power = await self._lg_display.async_get_power_status()
-            self._log_power_sync(
-                "linked off requested",
-                old_state=old_state,
-                new_state=new_state.state,
-                old_state_restored=old_state_restored,
-                new_state_restored=new_state_restored,
-                display_power=display_power,
-            )
-            if display_power:
-                await self._async_cancel_wake()
-                if await self._lg_display.async_power_off():
-                    self._schedule_power_supply_off("linked standby confirmed")
-                    self._standby_latched = True
-                    self._log_power_sync("display powered off from linked off event")
-                    self._state = MediaPlayerState.OFF
-                else:
-                    self._log_power_sync(
-                        "display power_off command failed on linked off event"
-                    )
+            # Events and polling use the same HDMI evidence and timing. A
+            # repeated false off report must never bypass the signal guard.
+            await self._async_check_standby()
         elif new_state.state in _LINKED_ACTIVE_STATES:
             # Attribute-only idle updates and restored states are not wake intent.
             if (
@@ -1840,11 +1793,12 @@ class AVMediaPlayer(ExtendedControls, MediaPlayerEntity):
             "automatic_wake_blocked": self._standby_latched,
         }
 
-    async def _async_check_standby(self) -> None:
-        options = self._config_entry.options
+    def _standby_eligible(self) -> bool:
+        """Re-evaluate protections after I/O and after waiting for control."""
         now = time.monotonic()
-        eligible = (
-            bool(self._linked_entity_id)
+        return (
+            self._lg_display.ready
+            and bool(self._linked_entity_id)
             and not self._any_presentation_active
             and self._is_linked_input_active
             and self._sync_automation_enabled
@@ -1854,6 +1808,21 @@ class AVMediaPlayer(ExtendedControls, MediaPlayerEntity):
             and now >= self._pending_source_until
             and not self._is_in_expected_display_transition(now)
         )
+
+    async def _async_check_standby(self) -> None:
+        # Serialize event/poll checks with explicit controls. Never carry a
+        # shutdown decision across a queued turn-on or source-selection command.
+        async with self._control_lock:
+            await self._async_check_standby_locked()
+
+    async def _async_check_standby_locked(self) -> None:
+        options = self._config_entry.options
+        if not self._standby_eligible():
+            self._standby_guard.reset()
+            return
+        # The event path may still have a cached input from the last HA poll.
+        self._current_input_id = await self._lg_display.async_get_input(use_cache=False)
+        eligible = self._standby_eligible()
         if not eligible:
             self._standby_guard.reset()
             return
@@ -1868,7 +1837,7 @@ class AVMediaPlayer(ExtendedControls, MediaPlayerEntity):
             self._linked_state,
             self._signal_present,
             low_power=self._power_sensor_in_standby(),
-            eligible=eligible,
+            eligible=self._standby_eligible(),
             no_signal_seconds=options.get("standby_no_signal_seconds", 120),
             idle_seconds=options.get("standby_idle_seconds", 900),
         )
@@ -1880,15 +1849,11 @@ class AVMediaPlayer(ExtendedControls, MediaPlayerEntity):
         if (
             power is not True
             or input_id != self._linked_input_id
-            or self._ha_stopping
-            or not self._sync_automation_enabled
-            or self._any_presentation_active
-            or time.monotonic()
-            < max(self._pending_state_until, self._pending_source_until)
+            or not self._standby_eligible()
         ):
             self._standby_guard.reset()
             return
-        signal = (
+        self._signal_present = (
             await self._lg_display.async_get_signal_status()
             if options.get("standby_signal_check", True)
             else None
@@ -1897,11 +1862,9 @@ class AVMediaPlayer(ExtendedControls, MediaPlayerEntity):
         confirmed = self._standby_guard.observe(
             time.monotonic(),
             self._linked_state,
-            signal,
+            self._signal_present,
             low_power=self._power_sensor_in_standby(),
-            eligible=not self._ha_stopping
-            and not self._any_presentation_active
-            and self._sync_automation_enabled,
+            eligible=self._standby_eligible(),
             no_signal_seconds=options.get("standby_no_signal_seconds", 120),
             idle_seconds=options.get("standby_idle_seconds", 900),
         )
@@ -1909,15 +1872,10 @@ class AVMediaPlayer(ExtendedControls, MediaPlayerEntity):
             return
         self._last_standby_reason = reason
         _LOGGER.info("Standby confirmed for %s: %s", self.entity_id, reason)
-        # Automatic shutdown must never cancel a native presentation that started
-        # while the last status queries were in flight. The LG API also checks
-        # this condition under its command lock.
-        async with self._control_lock:
-            if self._any_presentation_active or not self._lg_display.ready:
-                self._standby_guard.reset()
-                return
-            await self._async_cancel_wake()
-            await self._async_turn_off_locked()
+        # LG also rejects a presentation that starts while its command lock is
+        # pending. Explicit user turn_off remains independent of signal evidence.
+        await self._async_cancel_wake()
+        await self._async_turn_off_locked()
 
     async def async_media_play(self) -> None:
         await self._async_playback_action("media_play", MediaPlayerEntityFeature.PLAY)

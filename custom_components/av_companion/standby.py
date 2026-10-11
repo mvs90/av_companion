@@ -41,9 +41,9 @@ class StandbyGuard:
         reason = None
         delay = 0
         if eligible:
-            if state in {"off", "standby"}:
-                reason, delay = "linked_standby", 10
-            elif signal is False and no_signal_seconds > 0:
+            # Player power reports can be stale in either direction. Even an
+            # explicit off/standby event needs independent HDMI-loss evidence.
+            if signal is False and no_signal_seconds > 0:
                 reason, delay = "no_signal", no_signal_seconds
             elif state == "idle" and signal is None and low_power:
                 reason, delay = "idle_low_power", 120

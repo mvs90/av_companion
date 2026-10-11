@@ -60,7 +60,10 @@
           "sonos_speech_enhancement_entity_id": "Sonos-Schalter für Sprachverbesserung",
           "polling_interval": "Abfrageintervall (Sekunden)"
         },
-        "data_description": {}
+        "data_description": {
+          "standby_signal_check": "Erforderlich für automatisches Ausschalten bei Zuspieler „aus“/„Standby“. Ein vorhandenes oder unbekanntes HDMI-Signal verhindert diese Abschaltung.",
+          "standby_no_signal_seconds": "Durchgehender Signalverlust vor dem Ausschalten, auch wenn der Zuspieler dauerhaft fälschlich „aus“ meldet. Standard: 120 Sekunden. 0 deaktiviert diese Prüfung."
+        }
       }
     },
     "error": {

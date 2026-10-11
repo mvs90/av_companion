@@ -1,5 +1,5 @@
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, Mock, patch
 import pytest
 from homeassistant.core import State
 from homeassistant.components.media_player import MediaPlayerState
@@ -161,19 +161,18 @@ async def test_playback_and_volume_routing(player):
 
 
 @pytest.mark.asyncio
-async def test_extractor_retained_signal_does_not_veto_confirmed_player_standby(player):
-    player._test_states["media_player.apple_tv"] = State(
-        "media_player.apple_tv", "standby"
-    )
+@pytest.mark.parametrize("state", ["off", "standby"])
+async def test_retained_hdmi_signal_vetoes_false_player_standby(player, state):
+    player._test_states["media_player.apple_tv"] = State("media_player.apple_tv", state)
     player._lg_display.async_get_signal_status.return_value = True
-    for now in (1000, 1011):
+    for now in (1000, 1011, 1121, 3000):
         with patch(
             "custom_components.av_companion.media_player.time.monotonic",
             return_value=now,
         ):
             await player._async_check_standby()
-    player._lg_display.async_power_off.assert_awaited_once()
-    assert player._last_standby_reason == "linked_standby"
+    player._lg_display.async_power_off.assert_not_awaited()
+    assert player._last_standby_reason is None
 
 
 @pytest.mark.asyncio
@@ -224,3 +223,150 @@ async def test_player_remaining_in_standby_after_display_socket_off_never_wakes(
     player._start_display_wake_task.assert_not_called()
     player._async_call_linked_service.assert_not_awaited()
     player.hass.services.async_call.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("state", ["off", "standby"])
+@pytest.mark.parametrize("signal", [True, None, False])
+async def test_false_off_event_and_poll_share_signal_confirmation(
+    player, state, signal
+):
+    """Exercise both shutdown paths; a player stuck off emits no second event."""
+    new_state = State("media_player.apple_tv", state)
+    player._test_states[new_state.entity_id] = new_state
+    player._lg_display.async_get_signal_status.return_value = signal
+    player._schedule_power_supply_off = Mock()
+    with patch(
+        "custom_components.av_companion.media_player.time.monotonic", return_value=1000
+    ):
+        await player._async_handle_linked_state_change(
+            SimpleNamespace(
+                data={
+                    "old_state": State(new_state.entity_id, "playing"),
+                    "new_state": new_state,
+                }
+            )
+        )
+    player._lg_display.async_power_off.assert_not_awaited()
+    for now in (1011, 1119):
+        with patch(
+            "custom_components.av_companion.media_player.time.monotonic",
+            return_value=now,
+        ):
+            await player.async_update()
+        player._lg_display.async_power_off.assert_not_awaited()
+        player._schedule_power_supply_off.assert_not_called()
+    with patch(
+        "custom_components.av_companion.media_player.time.monotonic", return_value=1120
+    ):
+        await player.async_update()
+    if signal is False:
+        player._lg_display.async_power_off.assert_awaited_once()
+        player._schedule_power_supply_off.assert_called_once()
+        assert player._last_standby_reason == "no_signal"
+    else:
+        player._lg_display.async_power_off.assert_not_awaited()
+        player._schedule_power_supply_off.assert_not_called()
+        assert player._standby_guard.reason is None
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("signal", [True, None])
+async def test_false_off_loses_final_signal_confirmation(player, signal):
+    player._test_states["media_player.apple_tv"] = State("media_player.apple_tv", "off")
+    with patch(
+        "custom_components.av_companion.media_player.time.monotonic", return_value=1000
+    ):
+        await player._async_check_standby()
+    player._lg_display.async_get_signal_status.side_effect = [False, signal]
+    with patch(
+        "custom_components.av_companion.media_player.time.monotonic", return_value=1120
+    ):
+        await player._async_check_standby()
+    player._lg_display.async_power_off.assert_not_awaited()
+    assert player._signal_present is signal
+    assert player._standby_guard.reason is None
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "guard", ["lock", "presentation", "stopping", "source", "wake", "unloaded"]
+)
+async def test_false_off_protections_changed_during_final_query(player, guard):
+    player._test_states["media_player.apple_tv"] = State("media_player.apple_tv", "off")
+    with patch(
+        "custom_components.av_companion.media_player.time.monotonic", return_value=1000
+    ):
+        await player._async_check_standby()
+    queries = 0
+
+    async def signal():
+        nonlocal queries
+        queries += 1
+        if queries == 2:
+            if guard == "lock":
+                player.hass.data["av_companion"]["test"]["sync_automation_enabled"] = (
+                    False
+                )
+            elif guard == "presentation":
+                player._lg_display.presentation_active = True
+            elif guard == "stopping":
+                player._ha_stopping = True
+            elif guard == "source":
+                player._pending_source_until = 9999
+            elif guard == "wake":
+                player._pending_state_until = 9999
+            elif guard == "unloaded":
+                player._lg_display.ready = False
+        return False
+
+    player._lg_display.async_get_signal_status.side_effect = signal
+    with patch(
+        "custom_components.av_companion.media_player.time.monotonic", return_value=1120
+    ):
+        await player._async_check_standby()
+    player._lg_display.async_power_off.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_queued_check_revalidates_after_explicit_wake(player):
+    import asyncio
+
+    player._test_states["media_player.apple_tv"] = State("media_player.apple_tv", "off")
+    with patch(
+        "custom_components.av_companion.media_player.time.monotonic", return_value=1000
+    ):
+        await player._async_check_standby()
+    with patch(
+        "custom_components.av_companion.media_player.time.monotonic", return_value=1120
+    ):
+        async with player._control_lock:
+            check = asyncio.create_task(player._async_check_standby())
+            await asyncio.sleep(0)
+            assert not check.done()
+            player._pending_state_until = 9999
+        await check
+    player._lg_display.async_power_off.assert_not_awaited()
+    assert player._standby_guard.reason is None
+
+
+@pytest.mark.asyncio
+async def test_signal_checks_disabled_do_not_trust_false_off(player):
+    player._test_states["media_player.apple_tv"] = State("media_player.apple_tv", "off")
+    player._config_entry.options["standby_signal_check"] = False
+    for now in (1000, 1011, 9999):
+        with patch(
+            "custom_components.av_companion.media_player.time.monotonic",
+            return_value=now,
+        ):
+            await player._async_check_standby()
+    player._lg_display.async_get_signal_status.assert_not_awaited()
+    player._lg_display.async_power_off.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_explicit_power_off_still_works_with_hdmi_signal(player):
+    player._lg_display.async_get_signal_status.return_value = True
+    await player.async_turn_off()
+    player._lg_display.async_power_off.assert_awaited_once()
+    assert player.state == MediaPlayerState.OFF
