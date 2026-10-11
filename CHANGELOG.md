@@ -1,10 +1,15 @@
 # Changelog
 
-## 1.4.2
+## 1.5.0
+
+- Default to configurable 15-second no-signal delays for fullscreen and PiP (5–86400 seconds; 0 disables). Add an editable countdown notice in the connected app, rendered locally each second without input switching. One deadline callback rechecks safety conditions independently of regular polling.
+
+- With LG Professional Display 2.33.0 or later, correctly detect loss of the embedded HDMI signal in app fullscreen instead of treating the active SI app as HDMI video. Freshness and input/request correlation are enforced by LG; unknown values cannot authorize shutdown.
+- Add an independent persistent-PiP policy: keep the current view (default), switch to a saved view without HDMI, or turn the display off. Configure the delay (default 15 seconds, 0 disables) and target in AV options. Keep normal dashboards/media views and temporary notifications protected. Honour automation lock and revalidate context/power/signal before acting.
 
 - Show a confirmed player-off/HDMI-present contradiction in Alert Status after 120 seconds, including with power automation locked. Expose `linked_power_state_conflict` for automations/diagnostics, deduplicate repeated warnings and clear them when no longer confirmable. Distinguish an observed status conflict from a proven player API failure, since HDMI extractors may retain a signal.
 
-- Prevent false Apple TV `off`/`standby` reports from switching off a display with an active HDMI signal. State events and polling now share continuous no-signal confirmation (default 120 seconds); unknown signal status never confirms a player-off report.
+- Prevent false Apple TV `off`/`standby` reports from switching off a display with an active HDMI signal. State events and polling now share continuous no-signal confirmation (default 15 seconds); unknown signal status never confirms a player-off report.
 - Still shut down on sustained, freshly confirmed HDMI loss while the player remains stuck off. Returning signal resets evidence; disabling signal checking or the no-signal timer does not fall back to trusting player-off reports. Explicit user shutdown remains available.
 - Serialize standby checks with controls and recheck automation lock, source, startup, wake and presentation protection after I/O. Update the reported signal to the final confirmation result.
 - Expand unit regressions and the existing Docker acceptance harness for false-off events, stuck-off polling, unknown/returning signal and confirmed display-before-socket shutdown.

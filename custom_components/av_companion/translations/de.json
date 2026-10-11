@@ -58,22 +58,41 @@
           "sonos_tv_source": "Name der TV-Quelle am Soundsystem",
           "sonos_night_sound_entity_id": "Sonos-Schalter für Nachtmodus",
           "sonos_speech_enhancement_entity_id": "Sonos-Schalter für Sprachverbesserung",
-          "polling_interval": "Abfrageintervall (Sekunden)"
+          "polling_interval": "Abfrageintervall (Sekunden)",
+          "pip_no_signal_action": "PiP bei fehlendem HDMI-Signal",
+          "pip_no_signal_seconds": "PiP-Wartezeit ohne Signal (Sekunden; 0 = aus)",
+          "pip_no_signal_view": "PiP-Zielansicht ohne HDMI",
+          "standby_notice_enabled": "Countdown-Meldung auf dem Display",
+          "standby_notice_text": "Text der Countdown-Meldung"
         },
         "data_description": {
           "standby_signal_check": "Erforderlich für automatisches Ausschalten bei Zuspieler „aus“/„Standby“. Ein vorhandenes oder unbekanntes HDMI-Signal verhindert diese Abschaltung.",
-          "standby_no_signal_seconds": "Durchgehender Signalverlust vor dem Ausschalten, auch wenn der Zuspieler dauerhaft fälschlich „aus“ meldet. Standard: 120 Sekunden. 0 deaktiviert diese Prüfung."
+          "standby_no_signal_seconds": "Durchgehender Signalverlust vor dem Ausschalten, auch wenn der Zuspieler dauerhaft fälschlich „aus“ meldet. Standard: 15 Sekunden. 0 deaktiviert diese Prüfung.",
+          "pip_no_signal_action": "Nur für dauerhaft gewählte PiP-Ansichten in der App. Benachrichtigungen bleiben geschützt. Erfordert LG Professional Display 2.33.0 oder neuer.",
+          "pip_no_signal_seconds": "Durchgehender, bestätigter Signalverlust vor der PiP-Aktion. Standard: 15 Sekunden. Die Automationssperre verhindert auch diese Aktion.",
+          "pip_no_signal_view": "Wird nur bei „Ansicht ohne HDMI anzeigen“ verwendet. Zur Auswahl stehen gespeicherte Ansichten ohne HDMI-Element.",
+          "standby_notice_text": "Bis 250 Zeichen. {seconds} zeigt die verbleibenden Sekunden, {action} die geplante Aktion. Ohne Sekunden-Platzhalter wird ein Countdown angehängt. Anzeige benötigt die verbundene Display-App."
         }
       }
     },
     "error": {
       "invalid_pending_range": "Der Wert muss zwischen 0 und 60 Sekunden liegen",
       "invalid_power_supply_off_delay_range": "Die Verzögerung zum Ausschalten der Stromversorgung muss zwischen 0 und 300 Sekunden liegen",
-      "invalid_standby_timeout": "0 oder 30 bis 86400 Sekunden eingeben.",
+      "invalid_standby_timeout": "Signalverlust: 0 oder 5 bis 86400 Sekunden; Idle: 0 oder 30 bis 86400.",
       "self_reference": "Keine Entität dieser Integration auswählen.",
       "invalid_option_range": "Wert außerhalb des erlaubten Bereichs.",
-      "invalid_time": "Uhrzeit als HH:MM eingeben."
+      "invalid_time": "Uhrzeit als HH:MM eingeben.",
+      "invalid_notice_text": "Höchstens 250 Zeichen verwenden."
     }
   },
-  "title": "AV Companion"
+  "title": "AV Companion",
+  "selector": {
+    "pip_no_signal_action": {
+      "options": {
+        "keep": "Ansicht beibehalten",
+        "view": "Ansicht ohne HDMI anzeigen",
+        "turn_off": "Display ausschalten"
+      }
+    }
+  }
 }

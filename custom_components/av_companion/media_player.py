@@ -34,6 +34,7 @@ from homeassistant.helpers.event import (
 from .const import DOMAIN, INPUT_SOURCES
 from custom_components.lg_rs232_ip.api import DisplayAPI as LGDisplay
 from .standby import PowerStateConflict, StandbyGuard
+from .standby_notice import StandbyCountdown
 from .controls import ExtendedControls
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import entity_platform
@@ -196,7 +197,7 @@ async def async_setup_entry(
         )
 
 
-class AVMediaPlayer(ExtendedControls, MediaPlayerEntity):
+class AVMediaPlayer(StandbyCountdown, ExtendedControls, MediaPlayerEntity):
     """Media player entity for LG professional displays."""
 
     _attr_should_poll = False
@@ -252,8 +253,11 @@ class AVMediaPlayer(ExtendedControls, MediaPlayerEntity):
         self._suppress_linked_power_on_until: float = 0.0
 
         self._init_controls()
+        self._init_standby_countdown()
         self._standby_guard = StandbyGuard()
         self._power_state_conflict = PowerStateConflict()
+        self._pip_standby_guard = StandbyGuard()
+        self._pip_standby_input = None
         self._standby_latched = False
         self._signal_present: bool | None = None
         self._last_standby_reason: str | None = None
@@ -730,6 +734,18 @@ class AVMediaPlayer(ExtendedControls, MediaPlayerEntity):
             )
         )
 
+        @callback
+        def automation_changed(event):
+            if event.data.get("entry_id") == self._config_entry.entry_id:
+                self._sync_standby_countdown()
+                self.async_schedule_update_ha_state(True)
+
+        self.async_on_remove(
+            self.hass.bus.async_listen(
+                "av_companion_automation_changed", automation_changed
+            )
+        )
+
         async def refresh(_now):
             self.async_schedule_update_ha_state(True)
 
@@ -776,6 +792,7 @@ class AVMediaPlayer(ExtendedControls, MediaPlayerEntity):
 
     async def async_will_remove_from_hass(self) -> None:
         self._ha_stopping = True
+        self._cancel_standby_countdown()
         await self._async_cancel_presentations()
         await self._async_cancel_wake()
         tasks = [
@@ -1407,6 +1424,7 @@ class AVMediaPlayer(ExtendedControls, MediaPlayerEntity):
     async def _async_handle_hass_stop(self, event) -> None:
         """Mark integration as stopping to suppress sync side-effects."""
         self._ha_stopping = True
+        self._cancel_standby_countdown()
         await self._async_cancel_presentations()
         await self._async_cancel_wake()
         self._log_power_sync("home assistant stopping: suppress automatic power sync")
@@ -1793,6 +1811,10 @@ class AVMediaPlayer(ExtendedControls, MediaPlayerEntity):
             "last_standby_reason": self._last_standby_reason,
             "automatic_wake_blocked": self._standby_latched,
             "linked_power_state_conflict": self._power_state_conflict.confirmed,
+            "pip_no_signal_action": self._config_entry.options.get(
+                "pip_no_signal_action", "keep"
+            ),
+            "pip_standby_candidate": self._pip_standby_guard.reason,
         }
 
     def _reset_power_state_conflict(self) -> None:
@@ -1860,7 +1882,10 @@ class AVMediaPlayer(ExtendedControls, MediaPlayerEntity):
         # Serialize event/poll checks with explicit controls. Never carry a
         # shutdown decision across a queued turn-on or source-selection command.
         async with self._control_lock:
-            await self._async_check_standby_locked()
+            try:
+                await self._async_check_standby_locked()
+            finally:
+                self._sync_standby_countdown()
 
     async def _async_check_standby_locked(self) -> None:
         options = self._config_entry.options
@@ -1887,7 +1912,7 @@ class AVMediaPlayer(ExtendedControls, MediaPlayerEntity):
             self._signal_present,
             low_power=self._power_sensor_in_standby(),
             eligible=self._standby_eligible(),
-            no_signal_seconds=options.get("standby_no_signal_seconds", 120),
+            no_signal_seconds=options.get("standby_no_signal_seconds", 15),
             idle_seconds=options.get("standby_idle_seconds", 900),
         )
         if reason is None:
@@ -1915,7 +1940,7 @@ class AVMediaPlayer(ExtendedControls, MediaPlayerEntity):
             self._signal_present,
             low_power=self._power_sensor_in_standby(),
             eligible=self._standby_eligible(),
-            no_signal_seconds=options.get("standby_no_signal_seconds", 120),
+            no_signal_seconds=options.get("standby_no_signal_seconds", 15),
             idle_seconds=options.get("standby_idle_seconds", 900),
         )
         if confirmed != reason:
@@ -1936,7 +1961,116 @@ class AVMediaPlayer(ExtendedControls, MediaPlayerEntity):
     async def async_media_stop(self) -> None:
         await self._async_playback_action("media_stop", MediaPlayerEntityFeature.STOP)
 
+    def _pip_signal_context(self):
+        context = getattr(self._lg_display, "hdmi_context", None)
+        return (
+            context
+            if isinstance(context, dict) and context.get("mode") == "pip"
+            else None
+        )
+
+    def _pip_standby_eligible(self):
+        now = time.monotonic()
+        return (
+            self._lg_display.ready
+            and not self._ha_stopping
+            and not self._presentation_active
+            and self._sync_automation_enabled
+            and now
+            >= max(
+                self._startup_off_guard_until,
+                self._pending_state_until,
+                self._pending_source_until,
+            )
+            and not self._is_in_expected_display_transition(now)
+        )
+
+    async def _async_check_pip_standby(self):
+        """Persistent PiP has an explicit policy; temporary content stays protected."""
+        async with self._control_lock:
+            options = self._config_entry.options
+            action = options.get("pip_no_signal_action", "keep")
+            context = self._pip_signal_context()
+            if (
+                action not in {"view", "turn_off"}
+                or not context
+                or not self._pip_standby_eligible()
+            ):
+                self._pip_standby_guard.reset()
+                return
+            input_id = context.get("input_id")
+            if input_id not in INPUT_SOURCES.values():
+                self._pip_standby_guard.reset()
+                return
+            context_key = (input_id, context.get("view"))
+            if self._pip_standby_input != context_key:
+                self._pip_standby_guard.reset()
+                self._pip_standby_input = context_key
+            self._signal_present = context.get("signal")
+            reason = self._pip_standby_guard.observe(
+                time.monotonic(),
+                None,
+                self._signal_present,
+                eligible=True,
+                no_signal_seconds=options.get("pip_no_signal_seconds", 15),
+                idle_seconds=0,
+            )
+            if reason is None:
+                return
+            power = await self._lg_display.async_get_power_status(use_cache=False)
+            confirmed = self._pip_signal_context()
+            if (
+                power is not True
+                or not self._pip_standby_eligible()
+                or not confirmed
+                or (confirmed.get("input_id"), confirmed.get("view")) != context_key
+                or confirmed.get("signal") is not False
+            ):
+                self._pip_standby_guard.reset()
+                return
+            try:
+                if action == "view":
+                    target = options.get("pip_no_signal_view", "dashboard")
+                    choices = getattr(self._lg_display, "no_signal_views", {})
+                    if not isinstance(choices, dict) or target not in choices:
+                        raise HomeAssistantError(
+                            "Select an available view without HDMI/PiP"
+                        )
+                    await self._lg_display.async_select_view(target)
+                    self._last_standby_reason = "pip_no_signal_view"
+                else:
+                    await self._async_cancel_wake()
+                    await self._async_turn_off_locked()
+                    if self._state == MediaPlayerState.OFF:
+                        self._last_standby_reason = "pip_no_signal_off"
+                self._pip_standby_guard.reset()
+                self._clear_issue("pip_no_signal_action_failed")
+            except HomeAssistantError:
+                self._report_issue(
+                    "pip_no_signal_action_failed",
+                    "PiP signal-loss action unavailable; check target view and display connection",
+                    level="warning",
+                    trigger="confirmed PiP signal loss",
+                    details={"action": action},
+                )
+
     async def async_update(self) -> None:
+        try:
+            await self._async_update_state()
+        finally:
+            self._sync_standby_countdown()
+
+    async def _async_update_state(self) -> None:
+        if (
+            self._pip_signal_context()
+            and not self._ha_stopping
+            and not self._presentation_active
+        ):
+            self._standby_guard.reset()
+            self._reset_power_state_conflict()
+            await self._async_check_pip_standby()
+            return
+        self._pip_standby_guard.reset()
         if self._ha_stopping or self._any_presentation_active:
             self._reset_power_state_conflict()
             self._standby_guard.reset()

@@ -42,3 +42,11 @@ Für native Textüberblendungen `lg_rs232_ip.show_toast` am LG-Mediaplayer verwe
 ### Studio-Quellen ab AV Companion 1.4 / LG 2.14
 
 Dashboard, Dashboard PiP, Mediaplayer und alle zusätzlich gespeicherten Studio-Ansichten erscheinen automatisch als Quellen am kombinierten Player. Namen folgen Änderungen im Studio; die interne Kennung bleibt gleich. Wird die aktive eigene Ansicht gelöscht, folgt Dashboard. Der vorhandene Standby-Schutz gilt auch für eigene Ansichten. Ältere LG-Versionen bleiben unterstützt.
+
+### HDMI in der App und PiP bei Signalverlust
+
+Ab LG Professional Display **2.33.0** wird im App-Vollbild das eingebettete HDMI-Bild geprüft. Die aktive SI-App selbst zählt nicht als vorhandenes HDMI-Signal. Auch bei einem dauerhaft fälschlich ausgeschalteten Apple TV kann das Display nach bestätigtem Signalverlust abschalten.
+
+Unter **AV Companion → Konfigurieren** gibt es für dauerhafte PiP-Ansichten eine eigene Regel: **Ansicht beibehalten** (Standard), **Ansicht ohne HDMI anzeigen** oder **Display ausschalten**. Wartezeit und Zielansicht sind einstellbar; Standard 15 Sekunden, 0 deaktiviert die Aktion. Die Auswahl umfasst gespeicherte Ansichten ohne HDMI-Element. Der Wechsel bleibt innerhalb der App und verwendet die vorhandene OSD-Unterdrückung. Automationssperre, Start-/Quellenwechsel und unbekanntes Signal verhindern die Aktion; temporäre Mitteilungen und zeitlich begrenzte Ansichten bleiben geschützt.
+
+Der Text der Countdown-Meldung ist ebenfalls in den AV-Optionen bearbeitbar. `{seconds}` zeigt die Restzeit, `{action}` benennt Ausschalten oder Ansichtswechsel. Die Meldung lässt sich auch ausblenden. Der Countdown läuft lokal auf dem Display, ohne sekündliche Netzwerkabfragen.

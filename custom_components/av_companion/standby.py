@@ -27,7 +27,7 @@ class StandbyGuard:
         signal: bool | None,
         *,
         eligible: bool,
-        no_signal_seconds: int = 120,
+        no_signal_seconds: int = 15,
         idle_seconds: int = 900,
         low_power: bool = False,
     ) -> str | None:

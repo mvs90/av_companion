@@ -75,7 +75,9 @@ def player():
     p._state = MediaPlayerState.ON
     p._startup_off_guard_until = 0
     p.async_write_ha_state = Mock()
+    p.async_schedule_update_ha_state = Mock()
     p._async_call_linked_service = AsyncMock(return_value=True)
     p._start_display_wake_task = Mock()
     p._test_states = states
-    return p
+    yield p
+    p._cancel_standby_countdown()

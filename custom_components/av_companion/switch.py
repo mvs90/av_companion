@@ -32,6 +32,9 @@ class LGDisplaySyncAutomationSwitch(SwitchEntity, RestoreEntity):
             self.hass.data[DOMAIN][self._entry_id][
                 "sync_automation_enabled"
             ] = not self._is_on
+            self.hass.bus.async_fire(
+                "av_companion_automation_changed", {"entry_id": self._entry_id}
+            )
 
     async def async_added_to_hass(self) -> None:
         last_state = await self.async_get_last_state()

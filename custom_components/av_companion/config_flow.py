@@ -6,6 +6,7 @@ from homeassistant import config_entries
 from homeassistant.core import callback
 from homeassistant.helpers import selector, entity_registry as er
 from .const import DOMAIN, INPUT_SOURCES
+from .standby_notice import default_notice
 
 
 def _extract_entity_id(value):
@@ -76,10 +77,14 @@ class AVOptionsFlow(config_entries.OptionsFlow):
             ): bool,
             vol.Optional(
                 "standby_no_signal_seconds",
-                default=options.get("standby_no_signal_seconds", 120),
+                default=options.get("standby_no_signal_seconds", 15),
             ): int,
             vol.Optional(
                 "standby_idle_seconds", default=options.get("standby_idle_seconds", 900)
+            ): int,
+            vol.Optional(
+                "pip_no_signal_seconds",
+                default=options.get("pip_no_signal_seconds", 15),
             ): int,
         }
 
@@ -156,12 +161,22 @@ class AVOptionsFlow(config_entries.OptionsFlow):
                 if type(value) is not int or not low <= value <= high:
                     errors[key] = error
             for key, default in (
-                ("standby_no_signal_seconds", 120),
+                ("standby_no_signal_seconds", 15),
                 ("standby_idle_seconds", 900),
+                ("pip_no_signal_seconds", 15),
             ):
                 value = values.get(key, default)
-                if type(value) is not int or not (value == 0 or 30 <= value <= 86400):
+                if type(value) is not int or not (
+                    value == 0
+                    or (30 if key == "standby_idle_seconds" else 5) <= value <= 86400
+                ):
                     errors[key] = "invalid_standby_timeout"
+            if values.get("pip_no_signal_action", "keep") not in {
+                "keep",
+                "view",
+                "turn_off",
+            }:
+                errors["pip_no_signal_action"] = "invalid_option_range"
             registry = er.async_get(self.hass)
             for key in entity_fields:
                 entity_id = _extract_entity_id(values.get(key))
@@ -180,10 +195,22 @@ class AVOptionsFlow(config_entries.OptionsFlow):
 
                 if dt_util.parse_time(values.get(key, "00:00")) is None:
                     errors[key] = "invalid_time"
+            text = values.get("standby_notice_text", "")
+            if not isinstance(text, str) or len(text) > 250:
+                errors["standby_notice_text"] = "invalid_notice_text"
             if not errors:
                 return self.async_create_entry(title="", data=values)
 
-        schema = {}
+        schema = {
+            vol.Optional(
+                "standby_notice_enabled",
+                default=values.get("standby_notice_enabled", True),
+            ): bool,
+            vol.Optional(
+                "standby_notice_text",
+                default=values.get("standby_notice_text", default_notice(self.hass)),
+            ): str,
+        }
         for key, (_, _, default, _) in ranges.items():
             schema[vol.Optional(key, default=values.get(key, default))] = int
         for key, default in {
@@ -208,6 +235,7 @@ class AVOptionsFlow(config_entries.OptionsFlow):
             ("linked_media_player_input", "HDMI 1", list(INPUT_SOURCES)),
             ("content_player_input", "HDMI 2", list(INPUT_SOURCES)),
             ("linked_remote_power_mode", "generic", ["generic", "apple_tv"]),
+            ("pip_no_signal_action", "keep", ["keep", "view", "turn_off"]),
             (
                 "linked_volume_sync_mode",
                 "hdmi1_only",
@@ -217,10 +245,35 @@ class AVOptionsFlow(config_entries.OptionsFlow):
             schema[vol.Optional(key, default=values.get(key, default))] = (
                 selector.SelectSelector(
                     selector.SelectSelectorConfig(
-                        options=choices, mode=selector.SelectSelectorMode.DROPDOWN
+                        options=choices,
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                        **(
+                            {"translation_key": "pip_no_signal_action"}
+                            if key == "pip_no_signal_action"
+                            else {}
+                        ),
                     )
                 )
             )
+        from custom_components.lg_rs232_ip.api import get_display_api
+
+        data = getattr(self._config_entry, "data", {})
+        api = get_display_api(self.hass, data.get("lg_entry_id"), version=1)
+        views = getattr(api, "no_signal_views", {})
+        if not isinstance(views, dict):
+            views = {}
+        view_id = values.get("pip_no_signal_view", "dashboard")
+        views = {**views, **({view_id: view_id} if view_id not in views else {})}
+        schema[vol.Optional("pip_no_signal_view", default=view_id)] = (
+            selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=[
+                        {"value": key, "label": label} for key, label in views.items()
+                    ],
+                    mode=selector.SelectSelectorMode.DROPDOWN,
+                )
+            )
+        )
         for key, default in {
             "quiet_hours_start": "22:00",
             "quiet_hours_end": "07:00",

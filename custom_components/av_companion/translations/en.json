@@ -58,22 +58,41 @@
           "sonos_tv_source": "Sound system TV source name",
           "sonos_night_sound_entity_id": "Sonos night sound switch",
           "sonos_speech_enhancement_entity_id": "Sonos speech enhancement switch",
-          "polling_interval": "Polling interval (seconds)"
+          "polling_interval": "Polling interval (seconds)",
+          "pip_no_signal_action": "PiP without HDMI signal",
+          "pip_no_signal_seconds": "PiP no-signal delay (seconds; 0 disables)",
+          "pip_no_signal_view": "PiP fallback view without HDMI",
+          "standby_notice_enabled": "Show countdown on the display",
+          "standby_notice_text": "Countdown message text"
         },
         "data_description": {
           "standby_signal_check": "Required for automatic shutdown when the linked player reports off/standby. Present or unknown HDMI signal prevents that shutdown.",
-          "standby_no_signal_seconds": "Continuous signal loss before shutdown, including a player incorrectly stuck off. Default: 120 seconds. 0 disables this layer."
+          "standby_no_signal_seconds": "Continuous signal loss before shutdown, including a player incorrectly stuck off. Default: 15 seconds. 0 disables this layer.",
+          "pip_no_signal_action": "Applies only to persistent in-app PiP views. Temporary notifications remain protected. Requires LG Professional Display 2.33.0 or newer.",
+          "pip_no_signal_seconds": "Continuous confirmed signal loss before the PiP action. Default: 15 seconds. Automation lock also blocks this action.",
+          "pip_no_signal_view": "Used only for Show view without HDMI. Lists saved views with no HDMI element.",
+          "standby_notice_text": "Up to 250 characters. {seconds} shows remaining seconds; {action} shows the planned action. A countdown is appended if omitted. Requires the connected display app."
         }
       }
     },
     "error": {
       "invalid_pending_range": "Value must be between 0 and 60 seconds",
       "invalid_power_supply_off_delay_range": "Power supply off delay must be between 0 and 300 seconds",
-      "invalid_standby_timeout": "Enter 0 or 30–86400 seconds.",
+      "invalid_standby_timeout": "Signal loss: 0 or 5–86400 seconds; idle: 0 or 30–86400.",
       "self_reference": "Do not link an entity belonging to this integration.",
       "invalid_option_range": "Value outside the permitted range.",
-      "invalid_time": "Enter a time as HH:MM."
+      "invalid_time": "Enter a time as HH:MM.",
+      "invalid_notice_text": "Use no more than 250 characters."
     }
   },
-  "title": "AV Companion"
+  "title": "AV Companion",
+  "selector": {
+    "pip_no_signal_action": {
+      "options": {
+        "keep": "Keep current view",
+        "view": "Show view without HDMI",
+        "turn_off": "Turn display off"
+      }
+    }
+  }
 }

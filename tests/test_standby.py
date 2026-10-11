@@ -8,8 +8,8 @@ import pytest
 def test_confirmed_no_signal_overrides_stale_player(state):
     g = StandbyGuard()
     assert g.observe(0, state, False, eligible=True) is None
-    assert g.observe(119, state, False, eligible=True) is None
-    assert g.observe(120, state, False, eligible=True) == "no_signal"
+    assert g.observe(14, state, False, eligible=True) is None
+    assert g.observe(15, state, False, eligible=True) == "no_signal"
 
 
 @pytest.mark.parametrize(
