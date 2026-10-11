@@ -11,4 +11,7 @@ async def async_get_config_entry_diagnostics(hass, entry):
         "presentation_active": player._any_presentation_active if player else False,
         "standby_reason": player._last_standby_reason if player else None,
         "signal_present": player._signal_present if player else None,
+        "linked_power_state_conflict": player._power_state_conflict.confirmed
+        if player
+        else False,
     }

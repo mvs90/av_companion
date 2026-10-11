@@ -33,7 +33,7 @@ from homeassistant.helpers.event import (
 
 from .const import DOMAIN, INPUT_SOURCES
 from custom_components.lg_rs232_ip.api import DisplayAPI as LGDisplay
-from .standby import StandbyGuard
+from .standby import PowerStateConflict, StandbyGuard
 from .controls import ExtendedControls
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import entity_platform
@@ -253,6 +253,7 @@ class AVMediaPlayer(ExtendedControls, MediaPlayerEntity):
 
         self._init_controls()
         self._standby_guard = StandbyGuard()
+        self._power_state_conflict = PowerStateConflict()
         self._standby_latched = False
         self._signal_present: bool | None = None
         self._last_standby_reason: str | None = None
@@ -1791,17 +1792,63 @@ class AVMediaPlayer(ExtendedControls, MediaPlayerEntity):
             "standby_samples": self._standby_guard.samples,
             "last_standby_reason": self._last_standby_reason,
             "automatic_wake_blocked": self._standby_latched,
+            "linked_power_state_conflict": self._power_state_conflict.confirmed,
         }
 
+    def _reset_power_state_conflict(self) -> None:
+        self._power_state_conflict.reset()
+        self._clear_issue(
+            "linked_power_state_conflict",
+            message="Player-off/HDMI conflict is no longer confirmed",
+        )
+
+    def _observe_power_state_conflict(self) -> None:
+        if not self._power_state_conflict.observe(
+            time.monotonic(),
+            self._linked_state,
+            self._signal_present,
+            eligible=self._signal_check_eligible(),
+        ):
+            self._clear_issue(
+                "linked_power_state_conflict",
+                message="Player-off/HDMI conflict is no longer confirmed",
+            )
+            return
+        message = (
+            "Zuspieler meldet aus/Standby trotz HDMI-Signal: Player-Integration prüfen"
+            if getattr(self.hass.config, "language", "en") == "de"
+            else "Player reports off/standby despite HDMI signal: check player integration"
+        )
+        self._report_issue(
+            "linked_power_state_conflict",
+            message,
+            level="warning",
+            source=self._linked_entity_id,
+            trigger="confirmed HDMI/player state conflict",
+            details={
+                "linked_state": self._linked_state,
+                "signal_present": True,
+                "confirmation_seconds": 120,
+                "input": self._linked_input_name,
+                "possible_causes": [
+                    "incorrect_player_state",
+                    "hdmi_extractor_retains_signal",
+                ],
+            },
+        )
+
     def _standby_eligible(self) -> bool:
-        """Re-evaluate protections after I/O and after waiting for control."""
+        return self._sync_automation_enabled and self._signal_check_eligible()
+
+    def _signal_check_eligible(self) -> bool:
+        """Monitoring remains active with the automation lock enabled."""
         now = time.monotonic()
         return (
             self._lg_display.ready
             and bool(self._linked_entity_id)
             and not self._any_presentation_active
             and self._is_linked_input_active
-            and self._sync_automation_enabled
+            and self._state != MediaPlayerState.OFF
             and not self._ha_stopping
             and now >= self._startup_off_guard_until
             and now >= self._pending_state_until
@@ -1817,14 +1864,15 @@ class AVMediaPlayer(ExtendedControls, MediaPlayerEntity):
 
     async def _async_check_standby_locked(self) -> None:
         options = self._config_entry.options
-        if not self._standby_eligible():
+        if not self._signal_check_eligible():
             self._standby_guard.reset()
+            self._reset_power_state_conflict()
             return
         # The event path may still have a cached input from the last HA poll.
         self._current_input_id = await self._lg_display.async_get_input(use_cache=False)
-        eligible = self._standby_eligible()
-        if not eligible:
+        if not self._signal_check_eligible():
             self._standby_guard.reset()
+            self._reset_power_state_conflict()
             return
         self._signal_present = (
             await self._lg_display.async_get_signal_status()
@@ -1832,6 +1880,7 @@ class AVMediaPlayer(ExtendedControls, MediaPlayerEntity):
             else None
         )
         self._update_linked_cache_from_state()
+        self._observe_power_state_conflict()
         reason = self._standby_guard.observe(
             time.monotonic(),
             self._linked_state,
@@ -1859,6 +1908,7 @@ class AVMediaPlayer(ExtendedControls, MediaPlayerEntity):
             else None
         )
         self._update_linked_cache_from_state()
+        self._observe_power_state_conflict()
         confirmed = self._standby_guard.observe(
             time.monotonic(),
             self._linked_state,
@@ -1888,6 +1938,8 @@ class AVMediaPlayer(ExtendedControls, MediaPlayerEntity):
 
     async def async_update(self) -> None:
         if self._ha_stopping or self._any_presentation_active:
+            self._reset_power_state_conflict()
+            self._standby_guard.reset()
             return
 
         self._update_linked_cache_from_state()
@@ -1897,6 +1949,7 @@ class AVMediaPlayer(ExtendedControls, MediaPlayerEntity):
         power = await self._lg_display.async_get_power_status()
         if power is None:
             self._standby_guard.reset()
+            self._reset_power_state_conflict()
             if self._is_in_expected_display_transition(now):
                 self._display_unresponsive_since = None
                 self._log_power_sync(
@@ -2000,6 +2053,7 @@ class AVMediaPlayer(ExtendedControls, MediaPlayerEntity):
 
         if not power:
             self._standby_guard.reset()
+            self._reset_power_state_conflict()
             return
 
         if not self._use_linked_volume_sync:
@@ -2014,6 +2068,7 @@ class AVMediaPlayer(ExtendedControls, MediaPlayerEntity):
         input_id = await self._lg_display.async_get_input()
         if input_id is None:
             self._standby_guard.reset()
+            self._reset_power_state_conflict()
             return
 
         self._current_input_id = input_id

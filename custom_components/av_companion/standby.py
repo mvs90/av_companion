@@ -61,3 +61,29 @@ class StandbyGuard:
         if self.samples >= 2 and self.since is not None and now - self.since >= delay:
             return reason
         return None
+
+
+@dataclass
+class PowerStateConflict:
+    """Confirm a contradictory player-off/HDMI-present observation, not its cause."""
+
+    since: float | None = None
+    samples: int = 0
+    confirmed: bool = False
+
+    def reset(self) -> None:
+        self.since = None
+        self.samples = 0
+        self.confirmed = False
+
+    def observe(
+        self, now: float, state: str | None, signal: bool | None, *, eligible: bool
+    ) -> bool:
+        if not eligible or state not in {"off", "standby"} or signal is not True:
+            self.reset()
+            return False
+        if self.since is None:
+            self.since = now
+        self.samples += 1
+        self.confirmed = self.samples >= 2 and now - self.since >= 120
+        return self.confirmed

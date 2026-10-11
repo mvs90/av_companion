@@ -2,6 +2,8 @@
 
 ## 1.4.2
 
+- Show a confirmed player-off/HDMI-present contradiction in Alert Status after 120 seconds, including with power automation locked. Expose `linked_power_state_conflict` for automations/diagnostics, deduplicate repeated warnings and clear them when no longer confirmable. Distinguish an observed status conflict from a proven player API failure, since HDMI extractors may retain a signal.
+
 - Prevent false Apple TV `off`/`standby` reports from switching off a display with an active HDMI signal. State events and polling now share continuous no-signal confirmation (default 120 seconds); unknown signal status never confirms a player-off report.
 - Still shut down on sustained, freshly confirmed HDMI loss while the player remains stuck off. Returning signal resets evidence; disabling signal checking or the no-signal timer does not fall back to trusting player-off reports. Explicit user shutdown remains available.
 - Serialize standby checks with controls and recheck automation lock, source, startup, wake and presentation protection after I/O. Update the reported signal to the final confirmation result.

@@ -9,6 +9,8 @@ AV = "media_player.av_split_test_av_system"
 SOURCE = "media_player.av_test_source"
 SOUND = "media_player.av_test_sound"
 SOCKET = "switch.av_test_socket"
+LOCK = "switch.av_split_test_sync_automation_lock"
+ALERT = "sensor.av_split_test_alert_status"
 
 
 async def main():
@@ -170,12 +172,30 @@ async def main():
                 assert (await sim())["power"]
                 assert (await state(SOCKET))["state"] == "on"
                 passed("False player off event and stuck-off polls keep valid HDMI on")
+                await svc("switch", "turn_on", LOCK)
+                await asyncio.sleep(90)
+                await update()
+                assert any(
+                    issue["code"] == "linked_power_state_conflict"
+                    for issue in (await state(ALERT))["attributes"]["active_issues"]
+                )
+                assert (await sim())["power"]
+                passed(
+                    "Confirmed HDMI/player conflict appears in Alert Status with automation locked"
+                )
+                await svc("switch", "turn_off", LOCK)
                 await sim(signal=None)
                 await asyncio.sleep(35)
                 await update()
                 assert (await sim())["power"]
                 assert (await state(SOCKET))["state"] == "on"
-                passed("Unknown HDMI status does not confirm false player off")
+                assert not any(
+                    issue["code"] == "linked_power_state_conflict"
+                    for issue in (await state(ALERT))["attributes"]["active_issues"]
+                )
+                passed(
+                    "Unknown HDMI status does not confirm false player off and clears conflict warning"
+                )
                 await sim(signal=False)
                 await update()
                 await asyncio.sleep(10)
