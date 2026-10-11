@@ -6,9 +6,9 @@ import time
 
 def default_notice(hass):
     return (
-        "Kein HDMI-Signal. {action} in {seconds} Sekunden."
+        "Kein HDMI-Signal von {player}. {action} in {seconds} Sekunden."
         if getattr(hass.config, "language", "en") == "de"
-        else "No HDMI signal. {action} in {seconds} seconds."
+        else "No HDMI signal from {player}. {action} in {seconds} seconds."
     )
 
 
@@ -73,6 +73,13 @@ class StandbyCountdown:
             else ("Ausschalten" if de else "Turning off")
         )
         message = options.get("standby_notice_text") or default_notice(self.hass)
+        # Upgrade only the previous built-in default, preserving custom text.
+        if message in (
+            "Kein HDMI-Signal. {action} in {seconds} Sekunden.",
+            "No HDMI signal. {action} in {seconds} seconds.",
+        ):
+            message = default_notice(self.hass)
+        message = message.replace("{player}", self._signal_player_name)
         message = message.replace("{action}", label)[:250]
         if "{seconds}" not in message:
             message += " ({seconds} s)"

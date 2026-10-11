@@ -109,7 +109,7 @@ data:
   enabled: true
 ```
 
-Enable **Select sound system TV input on explicit turn-on** only for a device whose source list contains the configured source name (default `TV`). No sound-system power-off or grouping is inferred. This keeps independently playing music separate from display standby.
+Enable **Switch sound system to TV audio when selecting HDMI** only for a device whose source list contains the configured source name (default `TV`). Only explicit HDMI selection sends this command; default off leaves Sonos TV Autoplay in charge. No sound-system power-off or grouping is inferred. This keeps independently playing music separate from display standby.
 
 ```yaml
 action: av_companion.announce

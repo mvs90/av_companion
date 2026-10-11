@@ -259,6 +259,24 @@ class AVOptionsFlow(config_entries.OptionsFlow):
 
         data = getattr(self._config_entry, "data", {})
         api = get_display_api(self.hass, data.get("lg_entry_id"), version=1)
+        audio_views = getattr(api, "view_sources", {})
+        if not isinstance(audio_views, dict):
+            audio_views = {}
+        audio_view = values.get("sonos_pip_view", "pip_view")
+        audio_views = {"pip_view": "Dashboard PiP", **audio_views}
+        if audio_view not in audio_views:
+            audio_views[audio_view] = audio_view
+        schema[vol.Optional("sonos_pip_view", default=audio_view)] = (
+            selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=[
+                        {"value": key, "label": label}
+                        for key, label in audio_views.items()
+                    ],
+                    mode=selector.SelectSelectorMode.DROPDOWN,
+                )
+            )
+        )
         views = getattr(api, "no_signal_views", {})
         if not isinstance(views, dict):
             views = {}

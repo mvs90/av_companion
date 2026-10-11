@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.6.0
+
+- Add Sonos and PiP Sonos sources, route music metadata, artwork and transport to the sound-system player across HDMI and persistent app views; use Apple TV metadata for Sonos TV audio. Preserve pause/resume routing and authenticated artwork retrieval.
+- Restrict optional TV-audio selection to explicit HDMI choices. Default remains disabled for Sonos TV Autoplay; power-on and all app views leave audio unchanged. Audio playback does not change the LG input.
+- Include concrete player names in alerts and `{player}` in editable countdowns. Preserve custom messages and stable alert codes.
+- Protect ongoing Sonos music from HDMI-only no-signal shutdown without bypassing explicit PiP policies.
+
 ## 1.5.0
 
 - Default to configurable 15-second no-signal delays for fullscreen and PiP (5–86400 seconds; 0 disables). Add an editable countdown notice in the connected app, rendered locally each second without input switching. One deadline callback rechecks safety conditions independently of regular polling.

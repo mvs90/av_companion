@@ -54,7 +54,7 @@
           "quiet_hours_enabled": "Ruhezeiten für Benachrichtigungen aktivieren",
           "quiet_hours_start": "Beginn der Ruhezeit (HH:MM)",
           "quiet_hours_end": "Ende der Ruhezeit (HH:MM)",
-          "sonos_select_tv_source": "TV-Eingang am Soundsystem beim Einschalten wählen",
+          "sonos_select_tv_source": "Sonos bei HDMI-Auswahl auf TV-Ton umschalten",
           "sonos_tv_source": "Name der TV-Quelle am Soundsystem",
           "sonos_night_sound_entity_id": "Sonos-Schalter für Nachtmodus",
           "sonos_speech_enhancement_entity_id": "Sonos-Schalter für Sprachverbesserung",
@@ -63,7 +63,8 @@
           "pip_no_signal_seconds": "PiP-Wartezeit ohne Signal (Sekunden; 0 = aus)",
           "pip_no_signal_view": "PiP-Zielansicht ohne HDMI",
           "standby_notice_enabled": "Countdown-Meldung auf dem Display",
-          "standby_notice_text": "Text der Countdown-Meldung"
+          "standby_notice_text": "Text der Countdown-Meldung",
+          "sonos_pip_view": "Ansicht für PiP Sonos"
         },
         "data_description": {
           "standby_signal_check": "Erforderlich für automatisches Ausschalten bei Zuspieler „aus“/„Standby“. Ein vorhandenes oder unbekanntes HDMI-Signal verhindert diese Abschaltung.",
@@ -71,7 +72,9 @@
           "pip_no_signal_action": "Nur für dauerhaft gewählte PiP-Ansichten in der App. Benachrichtigungen bleiben geschützt. Erfordert LG Professional Display 2.33.0 oder neuer.",
           "pip_no_signal_seconds": "Durchgehender, bestätigter Signalverlust vor der PiP-Aktion. Standard: 15 Sekunden. Die Automationssperre verhindert auch diese Aktion.",
           "pip_no_signal_view": "Wird nur bei „Ansicht ohne HDMI anzeigen“ verwendet. Zur Auswahl stehen gespeicherte Ansichten ohne HDMI-Element.",
-          "standby_notice_text": "Bis 250 Zeichen. {seconds} zeigt die verbleibenden Sekunden, {action} die geplante Aktion. Ohne Sekunden-Platzhalter wird ein Countdown angehängt. Anzeige benötigt die verbundene Display-App."
+          "standby_notice_text": "Bis 250 Zeichen. {seconds} zeigt die verbleibenden Sekunden, {action} die geplante Aktion. Ohne Sekunden-Platzhalter wird ein Countdown angehängt. Anzeige benötigt die verbundene Display-App. {player} zeigt den Namen des HDMI-Zuspielers.",
+          "sonos_select_tv_source": "Aus: Sonos entscheidet selbst per TV-Autoplay. Ein: Nur die ausdrückliche Auswahl eines HDMI-Eingangs wählt TV-Ton. Einschalten, App-, Dashboard-, Mediaplayer- und PiP-Auswahl ändern die Audioquelle nicht.",
+          "sonos_pip_view": "Bearbeitbare Studio-Ansicht mit HDMI- und Medienkarte. Standard: Dashboard PiP; eine eigene Ansicht kann separat zugeordnet werden. Wird sie gelöscht, wird wieder Dashboard PiP verwendet."
         }
       }
     },

@@ -1,5 +1,15 @@
 # Split release acceptance — 2026-10-02
 
+## 1.6.0 audio routing and named notices — 2026-10-11
+
+226 tests pass on HA 2026.9.4/Python 3.14. The same suite is exercised on HA 2025.3.4 and against the minimum LG 2.0 API. Coverage adds Sonos music/TV/HTA-stream/paused/unavailable across HDMI and every persistent view; metadata, authenticated art, controls, pause/resume, audio play_media without input switching, optional TV selection on HDMI only, independent PiP view selection/deletion, source collisions, named alerts/countdowns, and presentation power protection with live Apple TV metadata.
+
+On the existing HA 2026.9.4 Docker instance, the actual Wohnzimmer Sonos played an existing music favorite under a saved/restored snapshot and mute. **Sonos, PiP Sonos, Dashboard, Mediaplayer and HDMI 1** all retained the music source, routed current title/artwork through the combined player, and returned a valid JPEG from its camera-independent artwork proxy. Pause/resume reached Sonos; restoring TV audio immediately selected Apple TV metadata. Display scene telemetry confirmed each view. Sonos TV source, 19% volume, mute-off, HDMI 1 and the previous automation lock were restored.
+
+The observed Apple TV fault was traced to a discovery helper still running in an obsolete Docker network namespace after HA recreation. Sonos event callbacks were bound only to loopback by a temporary away-from-home override. Recreating the **existing** HA and discovery services together using the original LAN port binding restored discovery; Apple TV changed from false off to playing and Sonos callbacks resumed. This repairs this local installation; it is not a claim to repair every upstream tvOS/pyatv defect. The HDMI-confirmation safety logic remains active.
+
+For Docker Desktop deployments, the Sonos advertised host must be reachable from the speakers on the callback port. Shared-network-namespace discovery helpers must be recreated with their HA service after container replacement. See [HA Sonos network requirements](https://www.home-assistant.io/integrations/sonos/#network-requirements) and [HA Apple TV](https://www.home-assistant.io/integrations/apple_tv/).
+
 ## 1.5.0 app HDMI signal, PiP policy and countdown — 2026-10-11
 
 **178 AV tests pass on HA 2025.3.4/Python 3.13 and HA 2026.9.4/Python 3.14.** The suite also passes against LG API v1 from LG 2.0.0. New coverage includes PiP keep/view/off, signal interruption, changed input/view, final power revalidation, automation locks, temporary presentations, missing target views, failed writes, editable notices, cancellation and a single deadline callback independent of normal polling.

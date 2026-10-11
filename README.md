@@ -2,7 +2,7 @@
 
 Combine an LG professional display, an optional player such as Apple TV, a sound system such as Sonos, and a display-only power socket into **one Home Assistant TV media player**. Uses the devices' existing HA integrations; it does not implement their network protocols.
 
-Requires [LG Professional Display 2.0.0 or later](https://github.com/mvs90/lg_rs232_ip) (public API v1) and Home Assistant 2025.3 or later. Each LG display can have one AV system. All other devices are optional. Current version: **1.5.0**.
+Requires [LG Professional Display 2.0.0 or later](https://github.com/mvs90/lg_rs232_ip) (public API v1) and Home Assistant 2025.3 or later. Each LG display can have one AV system. All other devices are optional. Current version: **1.6.0**.
 
 [Deutsche Anleitung](docs/README.de.md) · [Actions and examples](docs/FEATURES.md) · [Standby behavior](docs/STANDBY.md) · [MIT license](LICENSE)
 
@@ -37,7 +37,7 @@ Do not configure the same accessory twice through UI and YAML. A real Apple Home
 
 ## Reliable standby and power
 
-False Apple TV `idle` is checked against repeated LG HDMI-signal observations, fresh input/power verification and optional display-only consumption evidence. Unknown status is never confirmed off. Default thresholds are 120 seconds without signal and 900 seconds idle when signal status is unknown. A valid signal blocks the idle fallback. If the extractor preserves a valid signal while Apple TV falsely reports idle, the state remains ambiguous. [All stages, limits and timing](docs/STANDBY.md).
+False Apple TV `idle` is checked against repeated LG HDMI-signal observations, fresh input/power verification and optional display-only consumption evidence. Unknown status is never confirmed off. Default thresholds are 15 seconds without signal and 900 seconds idle when signal status is unknown. A valid signal blocks the idle fallback. If the extractor preserves a valid signal while Apple TV falsely reports idle, the state remains ambiguous. [All stages, limits and timing](docs/STANDBY.md).
 
 A socket is cut only after a fresh LG-off confirmation. Wake cancels pending shutdown and waits for confirmed socket-on state. Native presentations and queued downloads block automatic shutdown. Base unload makes the AV entity unavailable; AV unload leaves LG device control independent.
 
@@ -47,7 +47,7 @@ For Sonos with the verified LG panel: **Apple TV → FeinTech AX310 → LG HDMI 
 
 `send_remote_command`, `show_content`, `show_notification`, `show_display_content`, `clear_content`, `set_sound_mode`, and `announce` belong to `av_companion`. Native overlays, uploads, boot logo and screenshots belong to `lg_rs232_ip`. [Examples and precise behavior](docs/FEATURES.md).
 
-One playback player, one volume target and an optional separate content player are supported. Arbitrary multi-player input matrices, Sonos group management and a new Apple TV API are not included. Linked entities are owned by their original integrations. Optional entity renames are followed; removed devices must be reconfigured.
+One HDMI playback player, one audio player/volume target and an optional separate content player are supported. Arbitrary multi-player input matrices, Sonos group management and a new Apple TV API are not included. Linked entities are owned by their original integrations. Optional entity renames are followed; removed devices must be reconfigured.
 
 ## Development
 
@@ -71,3 +71,15 @@ AV Companion 1.3.0 exposes **Mediaplayer** when LG Professional Display 2.12.0 p
 ### All Studio sources (1.4)
 
 With LG 2.14, the combined player automatically includes **Dashboard**, **Dashboard PiP**, **Mediaplayer** and every additional saved Studio view. Renames follow stable view IDs; labels remain unique against HDMI and player apps. Removing an active custom view returns to Dashboard. View selection retains the existing supply, acknowledgement and standby safeguards and does not start a linked player. These sources are exposed to HomeKit through the combined entity; actual Apple Home pairing is an installation acceptance step.
+
+### Sonos, PiP Sonos and current audio (1.6)
+
+A separate configured sound-system player adds **Sonos** and, when supported by the display app, **PiP Sonos**. Sonos opens the saved Mediaplayer view; PiP Sonos opens Dashboard PiP by default, or a separate saved view selected with **View for PiP Sonos**. These are display/transport selections, not commands to start a playlist or interrupt the sound system. Without the optional app, Sonos remains an audio source on the current display input.
+
+Playing/buffering Sonos music, and paused music that can be resumed, supply the combined player's metadata, artwork and transport controls even while HDMI is displayed. Sonos **TV** audio (including `x-sonos-htastream`) uses the linked Apple TV/player's metadata instead. Unavailable Sonos also falls back to the linked player. Source metadata, progress, play/pause, next/previous and artwork use the same player; the `playback_entity_id` attribute identifies it. Album art is fetched through the original HA entity, supporting authenticated Apple TV artwork. An upstream app that supplies no artwork remains without artwork.
+
+Select the **combined AV entity** for media widgets and cover backgrounds in Display Studio to use this automatic routing on screen. A separate PiP Sonos layout can contain its own HDMI and media widgets. Deleted assigned views fall back to Dashboard PiP. Existing views and their widget bindings are preserved by integration updates.
+
+**Switch sound system to TV audio when selecting HDMI** is disabled by default. Leave it off to use Sonos's own TV Autoplay. When enabled, only an explicit HDMI input selection requests the configured TV source. Power-on, player apps, Sonos, Dashboard, Mediaplayer and all PiP views leave the audio source alone. Explicitly selecting HDMI still opens full-screen HDMI in the resident app. Sonos music protects an HDMI-only display from the Apple TV no-signal shutdown; separately configured PiP no-signal actions remain applicable.
+
+Alert Status identifies the affected player's friendly name. Countdown messages support `{player}`, `{action}` and `{seconds}`; the previous built-in text automatically gains the HDMI player name, while custom text remains editable.

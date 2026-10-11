@@ -54,7 +54,7 @@
           "quiet_hours_enabled": "Enable notification quiet hours",
           "quiet_hours_start": "Quiet hours start (HH:MM)",
           "quiet_hours_end": "Quiet hours end (HH:MM)",
-          "sonos_select_tv_source": "Select sound system TV input on explicit turn-on",
+          "sonos_select_tv_source": "Switch sound system to TV audio when selecting HDMI",
           "sonos_tv_source": "Sound system TV source name",
           "sonos_night_sound_entity_id": "Sonos night sound switch",
           "sonos_speech_enhancement_entity_id": "Sonos speech enhancement switch",
@@ -63,7 +63,8 @@
           "pip_no_signal_seconds": "PiP no-signal delay (seconds; 0 disables)",
           "pip_no_signal_view": "PiP fallback view without HDMI",
           "standby_notice_enabled": "Show countdown on the display",
-          "standby_notice_text": "Countdown message text"
+          "standby_notice_text": "Countdown message text",
+          "sonos_pip_view": "View for PiP Sonos"
         },
         "data_description": {
           "standby_signal_check": "Required for automatic shutdown when the linked player reports off/standby. Present or unknown HDMI signal prevents that shutdown.",
@@ -71,7 +72,9 @@
           "pip_no_signal_action": "Applies only to persistent in-app PiP views. Temporary notifications remain protected. Requires LG Professional Display 2.33.0 or newer.",
           "pip_no_signal_seconds": "Continuous confirmed signal loss before the PiP action. Default: 15 seconds. Automation lock also blocks this action.",
           "pip_no_signal_view": "Used only for Show view without HDMI. Lists saved views with no HDMI element.",
-          "standby_notice_text": "Up to 250 characters. {seconds} shows remaining seconds; {action} shows the planned action. A countdown is appended if omitted. Requires the connected display app."
+          "standby_notice_text": "Up to 250 characters. {seconds} shows remaining seconds; {action} shows the planned action. A countdown is appended if omitted. Requires the connected display app. {player} shows the HDMI player name.",
+          "sonos_select_tv_source": "Off: use Sonos TV autoplay. On: only explicitly selecting an HDMI input selects TV audio. Power-on, app, dashboard, media and PiP selections do not change the audio source.",
+          "sonos_pip_view": "Editable Studio view with HDMI and media widgets. Defaults to Dashboard PiP; optionally select a separate saved view. Deleting it falls back to Dashboard PiP."
         }
       }
     },

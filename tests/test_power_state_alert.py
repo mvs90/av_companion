@@ -12,7 +12,9 @@ def alerted_player(player):
     alerts = LGDisplayAlertState("test")
     player.hass.data["av_companion"]["test"]["alert_state"] = alerts
     player._lg_display.async_get_signal_status.return_value = True
-    player._test_states["media_player.apple_tv"] = State("media_player.apple_tv", "off")
+    player._test_states["media_player.apple_tv"] = State(
+        "media_player.apple_tv", "off", {"friendly_name": "Wohnzimmer Apple TV"}
+    )
     player.hass.config.language = "de"
     return player, LGDisplayAlertSensor(alerts, "Test AV", "test")
 
@@ -38,7 +40,7 @@ async def test_conflict_alert_confirmed_with_or_without_automation_lock(
     await poll(player, 1120)
     assert (
         sensor.state
-        == "Zuspieler meldet aus/Standby trotz HDMI-Signal: Player-Integration prüfen"
+        == "Wohnzimmer Apple TV meldet aus/Standby trotz HDMI-Signal: Player-Integration prüfen"
     )
     assert sensor.icon == "mdi:alert"
     assert player.extra_state_attributes["linked_power_state_conflict"]

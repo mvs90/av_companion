@@ -196,6 +196,24 @@ class ExtendedControls:
     async def async_play_media(self, media_type, media_id, **kwargs):
         await self._async_cancel_presentations()
         async with self._control_lock:
+            if self._default_media_target == self._sound_player and self._sound_player:
+                target = self._sound_player
+                if not self._features_for(target) & Feature.PLAY_MEDIA:
+                    raise ServiceValidationError(
+                        "Sound player does not support play_media"
+                    )
+                media_id, media_type = await self._async_resolve_media(
+                    media_id, media_type, target
+                )
+                await self._required_call(
+                    "media_player",
+                    "play_media",
+                    target,
+                    media_content_type=media_type,
+                    media_content_id=media_id,
+                    **kwargs,
+                )
+                return
             await self._async_play_content(media_type, media_id, **kwargs)
 
     async def async_media_seek(self, position):
@@ -257,17 +275,6 @@ class ExtendedControls:
             "media_pause" if playing else "media_play",
             Feature.PAUSE if playing else Feature.PLAY,
         )
-
-    @property
-    def _playback_target(self):
-        if self._lg_display.presentation_active:
-            return None
-        if (
-            self._option_entity("content_media_player_entity_id")
-            and self._current_input_id == self._content_input
-        ):
-            return self._content_target
-        return self._linked_entity_id if self._is_linked_input_active else None
 
     async def _async_playback_action(self, service, feature, **kwargs):
         target = self._playback_target

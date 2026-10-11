@@ -36,6 +36,7 @@ from custom_components.lg_rs232_ip.api import DisplayAPI as LGDisplay
 from .standby import PowerStateConflict, StandbyGuard
 from .standby_notice import StandbyCountdown
 from .controls import ExtendedControls
+from .audio import AudioRouting
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import entity_platform
 import voluptuous as vol
@@ -197,7 +198,9 @@ async def async_setup_entry(
         )
 
 
-class AVMediaPlayer(StandbyCountdown, ExtendedControls, MediaPlayerEntity):
+class AVMediaPlayer(
+    AudioRouting, StandbyCountdown, ExtendedControls, MediaPlayerEntity
+):
     """Media player entity for LG professional displays."""
 
     _attr_should_poll = False
@@ -222,6 +225,7 @@ class AVMediaPlayer(StandbyCountdown, ExtendedControls, MediaPlayerEntity):
         self._is_muted: Optional[bool] = None
         self._source: Optional[str] = None
         self._current_input_id: Optional[int] = None
+        self._audio_view = None
         self._linked_source: Optional[str] = None
         self._linked_source_list: list[str] = []
         self._linked_volume_level: Optional[float] = None
@@ -343,7 +347,7 @@ class AVMediaPlayer(StandbyCountdown, ExtendedControls, MediaPlayerEntity):
         if not self._linked_entity_id or not self._show_linked_app_sources:
             return {}
 
-        used_names = set(self._sources.keys())
+        used_names = set(self._sources.keys()) | set(self.audio_sources.values())
         display_map: dict[str, str] = {}
         candidate_sources: list[str] = []
         visible_sources = self._visible_linked_media_sources
@@ -505,12 +509,12 @@ class AVMediaPlayer(StandbyCountdown, ExtendedControls, MediaPlayerEntity):
 
     @property
     def state(self) -> MediaPlayerState:
-        if self._lg_display.presentation_active:
-            return MediaPlayerState.ON
         if self._state != MediaPlayerState.OFF and self._playback_target:
             state = self.hass.states.get(self._playback_target)
             if state and state.state in {"playing", "paused", "idle", "buffering"}:
                 return MediaPlayerState(state.state)
+        if self._lg_display.presentation_active:
+            return MediaPlayerState.ON
         return self._state
 
     @property
@@ -547,7 +551,7 @@ class AVMediaPlayer(StandbyCountdown, ExtendedControls, MediaPlayerEntity):
                 | feature.SHUFFLE_SET
                 | feature.REPEAT_SET
             )
-        if self._features_for(self._content_target) & feature.PLAY_MEDIA:
+        if self._features_for(self._default_media_target) & feature.PLAY_MEDIA:
             supported |= feature.PLAY_MEDIA
         volume_features = feature.VOLUME_SET | feature.VOLUME_STEP | feature.VOLUME_MUTE
         supported |= (
@@ -574,9 +578,19 @@ class AVMediaPlayer(StandbyCountdown, ExtendedControls, MediaPlayerEntity):
         available = getattr(self._lg_display, "view_sources", None)
         if not isinstance(available, dict):
             return {}
-        used = set(self._sources) | set(self._linked_source_display_map())
+        used = (
+            set(self._sources)
+            | set(self._linked_source_display_map())
+            | set(self.audio_sources.values())
+        )
         result = {}
         for identifier, label in available.items():
+            if (
+                self._sound_player
+                and identifier == self._sonos_pip_view
+                and identifier != "pip_view"
+            ):
+                continue
             name = label
             while name in used:
                 name += " (App)"
@@ -608,14 +622,26 @@ class AVMediaPlayer(StandbyCountdown, ExtendedControls, MediaPlayerEntity):
         )
 
     def _app_source_name(self, name):
-        used = set(self._sources) | set(self._linked_source_display_map())
+        used = (
+            set(self._sources)
+            | set(self._linked_source_display_map())
+            | set(self.audio_sources.values())
+        )
         while name in used:
             name += " (App)"
         return name
 
     @property
     def source(self) -> Optional[str]:
+        if self._audio_view_active:
+            return self.audio_sources[self._audio_view]
         active = getattr(self._lg_display, "active_view", None)
+        if (
+            self._sound_player
+            and self._sonos_pip_view != "pip_view"
+            and active == self._sonos_pip_view
+        ):
+            return self.audio_sources.get("pip_view")
         if isinstance(active, str) and active in self.app_view_sources:
             return self.app_view_sources[active]
         if getattr(self._lg_display, "media_view_active", False) is True:
@@ -628,7 +654,7 @@ class AVMediaPlayer(StandbyCountdown, ExtendedControls, MediaPlayerEntity):
 
     @property
     def source_list(self) -> list[str]:
-        display_sources = list(self._sources.keys())
+        display_sources = list(self._sources.keys()) + list(self.audio_sources.values())
         if self.dashboard_source:
             display_sources.append(self.dashboard_source)
         if self.pip_source:
@@ -661,63 +687,35 @@ class AVMediaPlayer(StandbyCountdown, ExtendedControls, MediaPlayerEntity):
 
     @property
     def media_title(self):
-        if self._lg_display.presentation_active:
-            return None
-        state = (
-            self.hass.states.get(self._playback_target)
-            if self._playback_target
-            else None
-        )
-        return (
-            state.attributes.get("media_title")
-            if state and state.state not in _UNAVAILABLE_STATES
-            else None
-        )
+        return self._playback_attribute("media_title")
 
     @property
     def media_artist(self):
-        if self._lg_display.presentation_active:
-            return None
-        state = (
-            self.hass.states.get(self._playback_target)
-            if self._playback_target
-            else None
-        )
-        return (
-            state.attributes.get("media_artist")
-            if state and state.state not in _UNAVAILABLE_STATES
-            else None
-        )
+        return self._playback_attribute("media_artist")
 
     @property
     def media_album_name(self):
-        if self._lg_display.presentation_active:
-            return None
-        state = (
-            self.hass.states.get(self._playback_target)
-            if self._playback_target
-            else None
-        )
-        return (
-            state.attributes.get("media_album_name")
-            if state and state.state not in _UNAVAILABLE_STATES
-            else None
-        )
+        return self._playback_attribute("media_album_name")
+
+    @property
+    def media_content_type(self):
+        return self._playback_attribute("media_content_type")
 
     @property
     def media_image_url(self):
-        if self._lg_display.presentation_active:
-            return None
-        state = (
-            self.hass.states.get(self._playback_target)
-            if self._playback_target
+        return self._playback_attribute("entity_picture")
+
+    async def async_get_media_image(self):
+        # Fetch through the original entity, including authenticated Apple TV art.
+        component = self.hass.data.get("media_player")
+        target = (
+            component.get_entity(self._playback_target)
+            if component and self._playback_target
             else None
         )
-        return (
-            state.attributes.get("entity_picture")
-            if state and state.state not in _UNAVAILABLE_STATES
-            else None
-        )
+        if target is None or target is self:
+            return None, None
+        return await target.async_get_media_image()
 
     async def async_added_to_hass(self) -> None:
         @callback
@@ -1176,6 +1174,12 @@ class AVMediaPlayer(StandbyCountdown, ExtendedControls, MediaPlayerEntity):
         if alert_state is None:
             return
 
+        if (
+            source
+            and source.startswith("media_player.")
+            and self._player_name(source) not in message
+        ):
+            message = f"{self._player_name(source)}: {message}"
         alert_state.set_issue(
             code,
             message,
@@ -1381,6 +1385,7 @@ class AVMediaPlayer(StandbyCountdown, ExtendedControls, MediaPlayerEntity):
                 return
 
             self._update_volume_cache_from_state()
+            self._sync_standby_countdown()
             self.async_write_ha_state()
         except Exception as err:
             _LOGGER.debug("Error handling linked volume state change: %s", err)
@@ -1430,8 +1435,13 @@ class AVMediaPlayer(StandbyCountdown, ExtendedControls, MediaPlayerEntity):
         self._log_power_sync("home assistant stopping: suppress automatic power sync")
 
     async def _async_handle_linked_state_change(self, event) -> None:
-        if self._ha_stopping or self._any_presentation_active:
-            self._log_power_sync("skip linked state change: home assistant stopping")
+        if self._ha_stopping:
+            return
+        if self._any_presentation_active:
+            # Persistent Studio views still need immediate Apple TV metadata;
+            # presentation protection applies to power automation, not state updates.
+            self._update_linked_cache_from_state()
+            self.async_write_ha_state()
             return
 
         new_state = event.data.get("new_state")
@@ -1594,13 +1604,6 @@ class AVMediaPlayer(StandbyCountdown, ExtendedControls, MediaPlayerEntity):
         self._pending_state_until = time.monotonic() + self._pending_power_seconds
         self._start_display_wake_task("local media_player turn_on")
         await self._async_remote_power(True)
-        if self._config_entry.options.get("sonos_select_tv_source", False):
-            await self._required_call(
-                "media_player",
-                "select_source",
-                self._volume_entity_id,
-                source=self._config_entry.options.get("sonos_tv_source", "TV"),
-            )
         self.async_write_ha_state()
 
     async def async_turn_off(self) -> None:
@@ -1660,6 +1663,7 @@ class AVMediaPlayer(StandbyCountdown, ExtendedControls, MediaPlayerEntity):
             "volume_up"
         ):
             self._update_volume_cache_from_state()
+            self._sync_standby_countdown()
             self.async_write_ha_state()
         if self._use_linked_volume_sync:
             return
@@ -1674,6 +1678,7 @@ class AVMediaPlayer(StandbyCountdown, ExtendedControls, MediaPlayerEntity):
             "volume_down"
         ):
             self._update_volume_cache_from_state()
+            self._sync_standby_countdown()
             self.async_write_ha_state()
         if self._use_linked_volume_sync:
             return
@@ -1712,13 +1717,37 @@ class AVMediaPlayer(StandbyCountdown, ExtendedControls, MediaPlayerEntity):
             and source != self.pip_source
             and source != self.media_view_source
             and source not in self.app_view_sources.values()
+            and source not in self.audio_sources.values()
         ):
             raise HomeAssistantError("Unknown source")
         await self._async_cancel_wake()
         await self._async_ensure_display_on_after_power_restore("source selection")
         if await self._lg_display.async_get_power_status(use_cache=False) is not True:
             raise HomeAssistantError("Display did not become ready")
+        self._state = MediaPlayerState.ON
         self._standby_guard.reset()
+        audio_view = next(
+            (key for key, name in self.audio_sources.items() if source == name), None
+        )
+        if audio_view is not None:
+            if audio_view == "pip_view":
+                if self._sonos_pip_view == "pip_view":
+                    await self._lg_display.async_select_pip()
+                else:
+                    await self._lg_display.async_select_view(self._sonos_pip_view)
+            elif self.media_view_source:
+                await self._lg_display.async_select_media_view()
+            self._audio_view = audio_view
+            self._current_input_id = (
+                None
+                if self.media_view_source or audio_view == "pip_view"
+                else self._current_input_id
+            )
+            self._source = source
+            self._pending_source = None
+            self._state = MediaPlayerState.ON
+            self.async_write_ha_state()
+            return
         view_id = next(
             (key for key, name in self.app_view_sources.items() if source == name), None
         )
@@ -1735,6 +1764,7 @@ class AVMediaPlayer(StandbyCountdown, ExtendedControls, MediaPlayerEntity):
                 await self._lg_display.async_select_pip()
             else:
                 await self._lg_display.async_select_dashboard()
+            self._audio_view = None
             self._current_input_id = None
             self._source = source
             self._pending_source = None
@@ -1744,12 +1774,15 @@ class AVMediaPlayer(StandbyCountdown, ExtendedControls, MediaPlayerEntity):
         source_id = self._sources.get(source)
         if source_id is not None:
             if await self._lg_display.async_set_input(source_id):
+                self._audio_view = None
+                self._state = MediaPlayerState.ON
                 self._current_input_id = source_id
                 self._source = source
                 self._pending_source = source
                 self._pending_source_until = (
                     time.monotonic() + self._pending_source_seconds
                 )
+                await self._async_select_tv_audio()
                 self.async_write_ha_state()
             return
 
@@ -1778,6 +1811,7 @@ class AVMediaPlayer(StandbyCountdown, ExtendedControls, MediaPlayerEntity):
             )
             return
 
+        self._audio_view = None
         self._current_input_id = linked_input_id
         self._source = source
         self._pending_source = source
@@ -1798,6 +1832,8 @@ class AVMediaPlayer(StandbyCountdown, ExtendedControls, MediaPlayerEntity):
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         return {
+            "playback_entity_id": self._playback_target,
+            "sound_player_entity_id": self._sound_player,
             "presentation_active": self._any_presentation_active,
             "presentation_queue_size": len(self._presentation_queue),
             "presentation_error": self._presentation_error,
@@ -1837,9 +1873,9 @@ class AVMediaPlayer(StandbyCountdown, ExtendedControls, MediaPlayerEntity):
             )
             return
         message = (
-            "Zuspieler meldet aus/Standby trotz HDMI-Signal: Player-Integration prüfen"
+            f"{self._player_name(self._linked_entity_id)} meldet aus/Standby trotz HDMI-Signal: Player-Integration prüfen"
             if getattr(self.hass.config, "language", "en") == "de"
-            else "Player reports off/standby despite HDMI signal: check player integration"
+            else f"{self._player_name(self._linked_entity_id)} reports off/standby despite HDMI signal: check player integration"
         )
         self._report_issue(
             "linked_power_state_conflict",
@@ -1860,7 +1896,11 @@ class AVMediaPlayer(StandbyCountdown, ExtendedControls, MediaPlayerEntity):
         )
 
     def _standby_eligible(self) -> bool:
-        return self._sync_automation_enabled and self._signal_check_eligible()
+        return (
+            self._sync_automation_enabled
+            and self._signal_check_eligible()
+            and not self._sound_music_active
+        )
 
     def _signal_check_eligible(self) -> bool:
         """Monitoring remains active with the automation lock enabled."""
