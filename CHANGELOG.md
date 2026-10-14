@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.6.2
+
+- Make a single source selection cancel pending socket-off immediately and retain its target across display startup. Expose `source_selection_pending` and keep the requested source visible while it is being applied; newer source/on/off commands supersede older intent.
+- Read back a lost power-on acknowledgement before retrying. Never silently claim a failed HDMI or linked-app selection, and never trust a cached HDMI input from the previous power cycle when launching a player app.
+- With LG Professional Display 2.33.1, source selection also waits for resident SI readiness through the corrected public API instead of falling back to native HDMI during app boot. Existing audio-routing and presentation protections remain.
+
 ## 1.6.1
 
 - Recover a recently disconnected player after automatic signal-loss standby, including `off → unknown → idle` during an Apple TV reboot. Serialize genuine wake events behind an in-flight off command; cancel superseded intent on explicit controls, lock, stop, changed playback or protected presentations. Startup/attribute-only/stale polling cannot wake the display.

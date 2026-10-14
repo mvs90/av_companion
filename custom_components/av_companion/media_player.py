@@ -233,6 +233,8 @@ class AVMediaPlayer(
         self._source: Optional[str] = None
         self._current_input_id: Optional[int] = None
         self._audio_view = None
+        self._source_request = None
+        self._control_generation = 0
         self._linked_source: Optional[str] = None
         self._linked_source_list: list[str] = []
         self._linked_volume_level: Optional[float] = None
@@ -529,6 +531,8 @@ class AVMediaPlayer(
     def available(self) -> bool:
         if not self._lg_display.ready:
             return False
+        if self._source_selection_pending:
+            return True
         now = time.monotonic()
         if self._pending_state is not None and now < self._pending_state_until:
             return True
@@ -641,6 +645,8 @@ class AVMediaPlayer(
 
     @property
     def source(self) -> Optional[str]:
+        if self._source_selection_pending:
+            return self._source_request[1]
         if self._audio_view_active:
             return self.audio_sources[self._audio_view]
         active = getattr(self._lg_display, "active_view", None)
@@ -1069,6 +1075,12 @@ class AVMediaPlayer(
                 self._power_supply_off_task = None
 
     async def _async_ensure_display_on_after_power_restore(self, reason: str) -> None:
+        self._cancel_power_supply_off_task()
+        generation = self._control_generation
+
+        def current():
+            return generation == self._control_generation and not self._ha_stopping
+
         try:
             if self._power_supply_switch_entity_id is not None:
                 if await self._async_call_power_supply_service("turn_on"):
@@ -1091,10 +1103,13 @@ class AVMediaPlayer(
                 "display_wake_timeout", 60
             )
             requested_on = False
-            while time.monotonic() < deadline and not self._ha_stopping:
+            next_write = 0.0
+            while time.monotonic() < deadline and current():
                 power_status = await self._lg_display.async_get_power_status(
                     use_cache=False
                 )
+                if not current():
+                    return
                 if power_status is True:
                     self._clear_issue(
                         "display_unresponsive", message="Display reachable again"
@@ -1102,18 +1117,15 @@ class AVMediaPlayer(
                     self._state = MediaPlayerState.ON
                     self.async_write_ha_state()
                     return
-                if power_status is False and not requested_on:
-                    if not await self._lg_display.async_power_on():
-                        self._report_issue(
-                            "display_unresponsive",
-                            "Display rejected power-on",
-                            level="error",
-                            trigger=reason,
-                        )
-                        return
-                    requested_on = True
+                if not requested_on and time.monotonic() >= next_write:
+                    # The panel may have accepted power-on before losing TCP.
+                    # Read back before a bounded retry, never require a second click.
+                    requested_on = await self._lg_display.async_power_on()
+                    next_write = time.monotonic() + 5
                 await asyncio.sleep(1)
 
+            if not current():
+                return
             self._report_issue(
                 "display_unresponsive",
                 "Display did not switch on or respond",
@@ -1186,7 +1198,10 @@ class AVMediaPlayer(
         if now is None:
             now = time.monotonic()
 
-        if self._lg_display.is_intentionally_unpowered:
+        if (
+            self._lg_display.is_intentionally_unpowered
+            or self._source_selection_pending
+        ):
             return True
 
         if self._pending_state is not None and now < self._pending_state_until:
@@ -1557,6 +1572,7 @@ class AVMediaPlayer(
         self._display_wake_task = None
 
     async def async_turn_on(self) -> None:
+        self._control_generation += 1
         self._clear_restart_recovery()
         await self._async_cancel_presentations()
         async with self._control_lock:
@@ -1575,6 +1591,7 @@ class AVMediaPlayer(
         self.async_write_ha_state()
 
     async def async_turn_off(self) -> None:
+        self._control_generation += 1
         self._clear_restart_recovery()
         await self._async_cancel_presentations()
         await self._lg_display.async_clear_content()
@@ -1683,29 +1700,51 @@ class AVMediaPlayer(
             self._is_muted = mute
             self.async_write_ha_state()
 
-    async def async_select_source(self, source: str) -> None:
-        self._clear_restart_recovery()
-        await self._async_cancel_presentations()
-        await self._lg_display.async_clear_content()
-        async with self._control_lock:
-            await self._async_select_source_locked(source)
+    @property
+    def _source_selection_pending(self):
+        return bool(
+            self._source_request
+            and self._source_request[0] == self._control_generation
+            and not self._ha_stopping
+        )
 
-    async def _async_select_source_locked(self, source: str) -> None:
-        if (
-            source not in self._sources
-            and source not in self._linked_source_display_map()
-            and source != self.dashboard_source
-            and source != self.pip_source
-            and source != self.media_view_source
-            and source not in self.app_view_sources.values()
-            and source not in self.audio_sources.values()
-        ):
+    async def async_select_source(self, source: str) -> None:
+        if source not in self.source_list:
             raise HomeAssistantError("Unknown source")
+        self._clear_restart_recovery()
+        self._control_generation += 1
+        generation = self._control_generation
+        request = self._source_request = (generation, source)
+        self._cancel_power_supply_off_task()
+        self.async_write_ha_state()
+        try:
+            await self._async_cancel_presentations()
+            await self._lg_display.async_clear_content()
+            async with self._control_lock:
+                if generation != self._control_generation or self._ha_stopping:
+                    return
+                await self._async_select_source_locked(source, generation)
+        finally:
+            if self._source_request is request:
+                self._source_request = None
+                self.async_write_ha_state()
+
+    async def _async_select_source_locked(self, source: str, generation: int) -> None:
+        def current():
+            return generation == self._control_generation and not self._ha_stopping
+
         await self._async_cancel_wake()
         await self._async_ensure_display_on_after_power_restore("source selection")
-        if await self._lg_display.async_get_power_status(use_cache=False) is not True:
+        if not current():
+            return
+        power = await self._lg_display.async_get_power_status(use_cache=False)
+        if not current():
+            return
+        if power is not True:
             raise HomeAssistantError("Display did not become ready")
         self._state = MediaPlayerState.ON
+        self._standby_latched = False
+        self._suppress_linked_power_on_until = 0.0
         self._standby_guard.reset()
         audio_view = next(
             (key for key, name in self.audio_sources.items() if source == name), None
@@ -1718,6 +1757,8 @@ class AVMediaPlayer(
                     await self._lg_display.async_select_view(self._sonos_pip_view)
             elif self.media_view_source:
                 await self._lg_display.async_select_media_view()
+            if not current():
+                return
             self._audio_view = audio_view
             self._current_input_id = (
                 None
@@ -1745,6 +1786,8 @@ class AVMediaPlayer(
                 await self._lg_display.async_select_pip()
             else:
                 await self._lg_display.async_select_dashboard()
+            if not current():
+                return
             self._audio_view = None
             self._current_input_id = None
             self._source = source
@@ -1754,7 +1797,12 @@ class AVMediaPlayer(
             return
         source_id = self._sources.get(source)
         if source_id is not None:
-            if await self._lg_display.async_set_input(source_id):
+            applied = await self._lg_display.async_set_input(source_id)
+            if not current():
+                return
+            if not applied:
+                raise HomeAssistantError("Display did not confirm source selection")
+            if applied:
                 self._audio_view = None
                 self._state = MediaPlayerState.ON
                 self._current_input_id = source_id
@@ -1773,31 +1821,27 @@ class AVMediaPlayer(
             _LOGGER.warning("Unsupported source requested: %s", source)
             return
 
-        switched_to_linked_input = (
-            self._current_input_id == linked_input_id
-            and getattr(self._lg_display, "dashboard_active", False) is not True
-            and getattr(self._lg_display, "pip_active", False) is not True
-            and getattr(self._lg_display, "media_view_active", False) is not True
-            and not isinstance(getattr(self._lg_display, "active_view", None), str)
+        # A previous-session cached HDMI input is not proof after a cold start.
+        switched_to_linked_input = await self._lg_display.async_set_input(
+            linked_input_id
         )
-        if not switched_to_linked_input:
-            switched_to_linked_input = await self._lg_display.async_set_input(
-                linked_input_id
-            )
-
-        if not switched_to_linked_input:
-            _LOGGER.warning(
-                "Failed to switch display to linked HDMI input for source: %s",
-                source,
-            )
+        if not current():
             return
+        if not switched_to_linked_input:
+            raise HomeAssistantError("Display did not confirm the player HDMI input")
 
         self._audio_view = None
         self._current_input_id = linked_input_id
         self._source = source
         self._pending_source = source
         self._pending_source_until = time.monotonic() + self._pending_source_seconds
-        await self._async_call_linked_service("select_source", source=linked_source)
+        if not await self._async_call_linked_service(
+            "select_source", source=linked_source
+        ):
+            self._pending_source = None
+            self._pending_source_until = 0.0
+            self._source = self._source_names_by_id.get(linked_input_id)
+            raise HomeAssistantError("Player did not confirm app selection")
         self.async_write_ha_state()
 
     async def async_media_next_track(self) -> None:
@@ -1813,6 +1857,10 @@ class AVMediaPlayer(
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         return {
+            # HA omits normal media attributes while the display is still off.
+            # Preserve the requested source in the UI throughout supply/boot wait.
+            **({"source": self.source} if self._source_selection_pending else {}),
+            "source_selection_pending": self._source_selection_pending,
             "playback_entity_id": self._playback_target,
             "sound_player_entity_id": self._sound_player,
             "presentation_active": self._any_presentation_active,

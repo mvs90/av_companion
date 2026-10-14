@@ -1,5 +1,11 @@
 # Split release acceptance — 2026-10-02
 
+## 1.6.2 single source selection across power/app startup — 2026-10-14
+
+309 AV tests pass with current/minimum HA and the minimum LG API. The new matrix covers HDMI 1/2/3, Dashboard, Dashboard PiP, Mediaplayer, custom views, Sonos and PiP Sonos; delayed boot; cancelled pending socket-off; source feedback during standby; newer source/on/off/shutdown intent; invalid sources; lost power ACK; input failure; bounded startup timeout; and reselecting cached HDMI before launching a player app. LG 2.33.1 adds adapter-level regression tests for its shared wake/input transaction.
+
+Hardware acceptance uses the existing HA 2026.9.4 container and real LG panel, with exactly one AV service call per source request. HDMI 1 from standby reached resident fullscreen in 55.8 s; Dashboard after disconnecting the confirmed-off display socket restored supply and selected the dashboard in 44.1 s. No real Apple TV restart or Sonos queue replacement was required.
+
 ## 1.6.1 restart recovery and app metadata — 2026-10-12
 
 **290 tests pass** on HA 2026.9.4/Python 3.14, HA 2025.3.4/Python 3.13, and the minimum LG 2.0 API. Added coverage includes observed runtime reconnect before/after automatic shutdown, queued wake during an in-flight off, explicit-off supersession, startup/restored/expired/locked/stop/presentation guards, later inactive state, attribute updates during power I/O, duplicate-off prevention, pending wake polling, independent title/artwork combinations, reported status, Sonos target changes, late logo responses, real-cover recovery and bounded persistent/negative artwork caching.

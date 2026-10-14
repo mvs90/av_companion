@@ -89,3 +89,7 @@ Select the **combined AV entity** for media widgets and cover backgrounds in Dis
 **Switch sound system to TV audio when selecting HDMI** is disabled by default. Leave it off to use Sonos's own TV Autoplay. When enabled, only an explicit HDMI input selection requests the configured TV source. Power-on, player apps, Sonos, Dashboard, Mediaplayer and all PiP views leave the audio source alone. Explicitly selecting HDMI still opens full-screen HDMI in the resident app. Sonos music protects an HDMI-only display from the Apple TV no-signal shutdown; separately configured PiP no-signal actions remain applicable.
 
 Alert Status identifies the affected player's friendly name. Countdown messages support `{player}`, `{action}` and `{seconds}`; the previous built-in text automatically gains the HDMI player name, while custom text remains editable.
+
+### Select a source to start the display
+
+With AV Companion **1.6.2** and LG Professional Display **2.33.1**, one source selection restores the configured supply, waits for confirmed power and, when enabled, the resident app, then applies the requested HDMI, Dashboard, PiP, media or custom view. The requested source stays visible while `source_selection_pending` is true. A newer selection or power command supersedes the older request. Failed input/app acknowledgement is reported instead of silently requiring a second selection. Install both updates for the resident-app startup correction; Display Studio does not need an update.
