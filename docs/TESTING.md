@@ -1,5 +1,9 @@
 # Split release acceptance — 2026-10-02
 
+## 1.6.3 coordinated audit — 2026-10-22
+
+309 AV tests pass on HA 2025.3.4/Python 3.13 and HA 2026.9.4/Python 3.14 alongside LG 2.33.2 and Studio 1.2.2. This is a maintenance release with unchanged coordination behavior. The same suite is checked against the minimum LG 2.0.0 API. No new physical LG, Apple TV, Sonos or HomeKit acceptance was performed during this audit.
+
 ## 1.6.2 single source selection across power/app startup — 2026-10-14
 
 309 AV tests pass with current/minimum HA and the minimum LG API. The new matrix covers HDMI 1/2/3, Dashboard, Dashboard PiP, Mediaplayer, custom views, Sonos and PiP Sonos; delayed boot; cancelled pending socket-off; source feedback during standby; newer source/on/off/shutdown intent; invalid sources; lost power ACK; input failure; bounded startup timeout; and reselecting cached HDMI before launching a player app. LG 2.33.1 adds adapter-level regression tests for its shared wake/input transaction.

@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.6.3
+
+- Maintenance release verified with LG Professional Display 2.33.2 and Display Studio 1.2.2 on Home Assistant 2025.3.4 and 2026.9.4.
+- Source selection, audio routing and power coordination are unchanged.
+
 ## 1.6.2
 
 - Make a single source selection cancel pending socket-off immediately and retain its target across display startup. Expose `source_selection_pending` and keep the requested source visible while it is being applied; newer source/on/off commands supersede older intent.
