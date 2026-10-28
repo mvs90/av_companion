@@ -60,3 +60,9 @@ Für diese automatische Auswahl in Widgets und Cover-Hintergründen die **kombin
 Unter **AV Companion → Konfigurieren → Sonos bei HDMI-Auswahl auf TV-Ton umschalten** lässt sich die TV-Umschaltung abschalten. Aus ist der Standard: Sonos verwendet seine eigene TV-Autoplay-Einstellung. Auch bei eingeschalteter Option ändern Einschalten, App-Auswahl, Sonos, Dashboard, Mediaplayer und PiP die Audioquelle nicht.
 
 Meldungen nennen den konkreten Player, z. B. „Wohnzimmer Apple TV“. Im Countdown-Text steht dafür `{player}` zur Verfügung; `{seconds}` und `{action}` bleiben erhalten. Eine vorhandene Standardmeldung wird automatisch angepasst, eigene Texte bleiben erhalten.
+
+## Projekt unterstützen
+
+Wenn dir dieses Projekt hilft, kannst du seine Weiterentwicklung und Pflege
+freiwillig über [PayPal](https://www.paypal.me/mvs90) unterstützen.
+Vielen Dank für deine Unterstützung!

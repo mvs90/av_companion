@@ -93,3 +93,9 @@ Alert Status identifies the affected player's friendly name. Countdown messages 
 ### Select a source to start the display
 
 With AV Companion **1.6.2** and LG Professional Display **2.33.1**, one source selection restores the configured supply, waits for confirmed power and, when enabled, the resident app, then applies the requested HDMI, Dashboard, PiP, media or custom view. The requested source stays visible while `source_selection_pending` is true. A newer selection or power command supersedes the older request. Failed input/app acknowledgement is reported instead of silently requiring a second selection. Install both updates for the resident-app startup correction; Display Studio does not need an update.
+
+## Support this project
+
+If you find this project useful, you can support its development and maintenance
+with a voluntary contribution via [PayPal](https://www.paypal.me/mvs90).
+Thank you for your support!
