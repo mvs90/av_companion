@@ -35,6 +35,8 @@ jobs:
           repository: mvs90/lg_rs232_ip
           ref: ${{ matrix.lg }}
           path: .test-dependencies/lg
+      - name: Install Apple TV test dependency matching Home Assistant
+        run: python -c "import json, pathlib, subprocess, sys, homeassistant; p=pathlib.Path(homeassistant.__file__).parent/'components/apple_tv/manifest.json'; subprocess.check_call([sys.executable, '-m', 'pip', 'install', *json.loads(p.read_text())['requirements']])"
       - run: python -m pytest -q
         env:
           PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/.test-dependencies/lg

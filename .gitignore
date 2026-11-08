@@ -20,3 +20,7 @@ lg_display_test_results_*.json
 
 /dev/recovery-results.json
 /dev/netflix-fallback.png
+
+# Ignore macOS/iCloud conflict copies
+* 2.*
+* 3.*

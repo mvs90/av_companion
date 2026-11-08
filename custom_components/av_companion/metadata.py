@@ -81,7 +81,11 @@ class PlaybackMetadata:
             )
             if target is None or target is self:
                 return None, None
-            return await target.async_get_media_image()
+            identity = self._playback_attribute("entity_picture")
+            result = await target.async_get_media_image()
+            if self._playback_target != target_id or self._playback_attribute("entity_picture") != identity:
+                return None, None
+            return result
         app = self._app_metadata
         if not app:
             return None, None

@@ -403,12 +403,19 @@ class AVMediaPlayer(
         if input_id is None:
             return None
 
+        if self._sound_state and self._playback_target == self._sound_player:
+            return "SONOS • " + self._source_names_by_id.get(input_id, f"0x{input_id:02x}")
+
         if input_id == self._linked_input_id:
             linked_source_name = self._display_name_for_linked_source(
                 self._linked_source
             )
             if linked_source_name:
                 return linked_source_name
+            # tvOS can report the active app without exposing an app launch
+            # list. Its playback identity must still replace the HDMI label.
+            if self._linked_source:
+                return self._linked_source
 
         return self._source_names_by_id.get(input_id, f"0x{input_id:02x}")
 
@@ -664,7 +671,7 @@ class AVMediaPlayer(
             return self.pip_source
         if getattr(self._lg_display, "dashboard_active", False) is True:
             return self.dashboard_source
-        return self._source
+        return self._resolve_source_name(self._current_input_id) if self._current_input_id is not None else self._source
 
     @property
     def source_list(self) -> list[str]:
@@ -680,6 +687,11 @@ class AVMediaPlayer(
             for name in self.app_view_sources.values()
             if name not in display_sources
         )
+        # Include the current audio/video combination as an accepted selection.
+        # It is metadata for the actual tone input, not a request to select TV audio.
+        current = self._resolve_source_name(self._current_input_id)
+        if current and current.startswith("SONOS • ") and current not in display_sources:
+            display_sources.append(current)
         linked_sources = list(self._linked_source_display_map().keys())
         if not linked_sources:
             return display_sources
@@ -1436,6 +1448,8 @@ class AVMediaPlayer(
     async def _async_handle_linked_state_change(self, event) -> None:
         if self._ha_stopping:
             return
+        if await self._async_confirmed_linked_off(event):
+            return
         if self._any_presentation_active:
             # Persistent Studio views still need immediate Apple TV metadata;
             # presentation protection applies to power automation, not state updates.
@@ -1552,6 +1566,7 @@ class AVMediaPlayer(
                 or (
                     new_state.state == STATE_IDLE
                     and not reconnect
+                    and not self._linked_off_confirmed
                     and (
                         self._standby_latched
                         or old_state not in _LINKED_INACTIVE_STATES
@@ -1563,6 +1578,36 @@ class AVMediaPlayer(
             await self._async_linked_wake(new_state)
 
         self.async_write_ha_state()
+
+    async def _async_confirmed_linked_off(self, event) -> bool:
+        """Power-off acknowledged by the device needs no no-signal countdown."""
+        from .linked_power import confirmed_power
+        old, new = event.data.get("old_state"), event.data.get("new_state")
+        if (not self._sync_automation_enabled or old is None or new is None
+            or old.state not in _LINKED_ACTIVE_STATES or new.state != STATE_OFF
+            or _is_restored_state(old) or _is_restored_state(new)
+            or self._current_input_id != self._linked_input_id
+            or not confirmed_power(self.hass, self._linked_entity_id, False)):
+            return False
+        async with self._control_lock:
+            latest = self.hass.states.get(self._linked_entity_id)
+            if (self._ha_stopping or not self._sync_automation_enabled
+                or latest is None or latest.last_changed != new.last_changed
+                or latest.state != STATE_OFF
+                or self._current_input_id != self._linked_input_id
+                or not confirmed_power(self.hass, self._linked_entity_id, False)):
+                return False
+            self._control_generation += 1
+            self._clear_restart_recovery()
+            await self._async_cancel_wake()
+            await self._async_cancel_presentations()
+            await self._lg_display.async_clear_content()
+            await self._async_turn_off_locked(linked_already_off=True)
+            if self._state == MediaPlayerState.OFF:
+                self._linked_off_confirmed = True
+                self._last_standby_reason = "linked_power_off"
+                self.async_write_ha_state()
+            return True
 
     async def _async_cancel_wake(self):
         task = self._display_wake_task
@@ -1600,7 +1645,7 @@ class AVMediaPlayer(
             await self._async_cancel_wake()
             await self._async_turn_off_locked()
 
-    async def _async_turn_off_locked(self, *, no_signal: bool = False) -> None:
+    async def _async_turn_off_locked(self, *, no_signal: bool = False, linked_already_off: bool = False) -> None:
         if no_signal:
             self._auto_standby_until = time.monotonic() + 180
         else:
@@ -1623,7 +1668,7 @@ class AVMediaPlayer(
             self._display_off_forwarded = True
             # Signal loss can be a reboot. Do not send a returning player back
             # into standby, nor queue a power command while it is disconnected.
-            if not no_signal:
+            if not no_signal and not linked_already_off:
                 await self._async_remote_power(False)
             self._schedule_power_supply_off("confirmed off")
             self.async_write_ha_state()
@@ -1795,7 +1840,14 @@ class AVMediaPlayer(
             self._pending_source_until = 0.0
             self.async_write_ha_state()
             return
-        source_id = self._sources.get(source)
+        keep_audio = source.startswith("SONOS • ")
+        source_id = self._sources.get(source.removeprefix("SONOS • ") if keep_audio else source)
+        if (source_id is None and self._linked_source
+                and self._linked_source_display_map().get(source, source) == self._linked_source
+                and self._linked_source not in self._linked_source_list):
+            # Already-running app: select its HDMI/audio route without trying
+            # an unsupported select_source command on the linked player.
+            source_id = self._linked_input_id
         if source_id is not None:
             applied = await self._lg_display.async_set_input(source_id)
             if not current():
@@ -1811,7 +1863,8 @@ class AVMediaPlayer(
                 self._pending_source_until = (
                     time.monotonic() + self._pending_source_seconds
                 )
-                await self._async_select_tv_audio()
+                if not keep_audio:
+                    await self._async_select_tv_audio()
                 self.async_write_ha_state()
             return
 

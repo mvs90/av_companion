@@ -30,6 +30,7 @@ def player():
         )
     }
     hass = Mock()
+    hass.config_entries = None  # No connected Apple TV protocol unless explicitly supplied.
     hass.states.get.side_effect = states.get
     hass.services.async_call = AsyncMock()
     hass.async_create_task.side_effect = asyncio.create_task

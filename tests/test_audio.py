@@ -166,7 +166,7 @@ async def test_failed_sonos_does_not_undo_hdmi_selection(audio):
     audio._config_entry.options["sonos_select_tv_source"] = True
     audio._async_call_volume_service = AsyncMock(return_value=False)
     await audio.async_select_source("HDMI 1")
-    assert audio.source == "HDMI 1"
+    assert audio.source == "SONOS • HDMI 1"
 
 
 def test_unique_names_and_optional_sources(audio):
@@ -309,3 +309,54 @@ async def test_apple_metadata_events_update_app_views_without_power_actions(audi
     assert audio.media_title == "New movie"
     audio._start_display_wake_task.assert_not_called()
     audio._lg_display.async_power_off.assert_not_awaited()
+
+@pytest.mark.parametrize('state', ['playing', 'paused', 'buffering'])
+@pytest.mark.parametrize('apps', [[], ['Netflix']])
+@pytest.mark.parametrize('show_apps', [False, True])
+def test_hdmi_keeps_sonos_label_and_cover_until_actual_tv_input(audio, state, apps, show_apps):
+    original = audio._test_states['media_player.sonos']
+    audio._test_states[original.entity_id] = State(original.entity_id, state, dict(original.attributes))
+    audio._linked_source = 'Netflix'
+    audio._linked_source_list = apps
+    audio._config_entry.options['show_linked_app_sources'] = show_apps
+    # Also exercise an old cached source from a previous Apple TV session.
+    audio._source = 'Netflix'
+    assert audio.source == 'SONOS • HDMI 1'
+    assert audio.source in audio.source_list
+    assert audio.media_image_url == original.attributes['entity_picture']
+    audio._test_states[original.entity_id] = State(original.entity_id, 'playing', {'source':'TV'})
+    assert audio.source == 'Netflix'
+    assert audio.media_title == 'Film'
+    assert audio.media_image_url == '/api/media_player_proxy/apple'
+    audio._test_states[original.entity_id] = original
+    assert audio.source == 'SONOS • HDMI 1'
+    assert audio.media_title == 'Song'
+    assert audio.media_image_url == original.attributes['entity_picture']
+
+@pytest.mark.asyncio
+async def test_selecting_current_combination_preserves_audio(audio):
+    audio._config_entry.options['sonos_select_tv_source'] = True
+    audio._async_call_volume_service = AsyncMock(return_value=True)
+    await audio.async_select_source('SONOS • HDMI 1')
+    audio._lg_display.async_set_input.assert_awaited_once_with(0x90)
+    audio._async_call_volume_service.assert_not_awaited()
+    assert audio.source == 'SONOS • HDMI 1'
+
+@pytest.mark.asyncio
+async def test_selecting_active_app_without_launch_list_selects_only_route(audio):
+    audio._linked_source = 'Netflix'
+    audio._linked_source_list = []
+    audio._async_call_linked_service = AsyncMock(return_value=True)
+    audio._async_select_tv_audio = AsyncMock()
+    await audio.async_select_source('Netflix')
+    audio._lg_display.async_set_input.assert_awaited_once_with(0x90)
+    audio._async_select_tv_audio.assert_awaited_once()
+    audio._async_call_linked_service.assert_not_awaited()
+
+@pytest.mark.asyncio
+async def test_artwork_does_not_cross_an_audio_route_change(audio):
+    async def switch():
+        audio._test_states['media_player.sonos'] = State('media_player.sonos','playing',{'source':'TV'})
+        return b'old-sonos-cover', 'image/jpeg'
+    audio.hass.data['media_player'] = SimpleNamespace(get_entity=lambda _:SimpleNamespace(async_get_media_image=switch))
+    assert await audio.async_get_media_image() == (None,None)

@@ -75,6 +75,7 @@ async def test_rename_rewrites_optional_entity_reference(player):
         add_update_listener=Mock(),
     )
     player.hass.data = {}
+    player.hass.config_entries = Mock()
     player.hass.config_entries.async_forward_entry_setups = AsyncMock()
     with patch(
         "custom_components.av_companion.get_display_api",

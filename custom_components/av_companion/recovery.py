@@ -5,11 +5,13 @@ import time
 
 class RestartRecovery:
     def _init_recovery(self):
+        self._linked_off_confirmed = False
         self._auto_standby_until = 0.0
         self._linked_reconnect_until = 0.0
         self._wake_generation = 0
 
     def _clear_restart_recovery(self):
+        self._linked_off_confirmed = False
         self._auto_standby_until = 0.0
         self._linked_reconnect_until = 0.0
         self._wake_generation += 1
@@ -35,11 +37,14 @@ class RestartRecovery:
 
     async def _async_linked_wake(self, event_state):
         generation = self._wake_generation
+        from .linked_power import confirmed_power
+        confirmed_return = self._linked_off_confirmed and confirmed_power(self.hass, self._linked_entity_id, True)
         # Explicit off keeps its echo suppression. Only automatic signal-loss
         # standby may be undone by a genuine return during the off transaction.
         if (
             self._linked_power_on_suppressed
             and time.monotonic() >= self._auto_standby_until
+            and not confirmed_return
         ):
             return
         async with self._control_lock:

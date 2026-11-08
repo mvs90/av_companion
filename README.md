@@ -1,5 +1,7 @@
 # AV Companion
 
+Current consolidated release: **1.7.0**. See [release notes](docs/CONSOLIDATED-RELEASE.md). Existing configuration is retained.
+
 Combine an LG professional display, an optional player such as Apple TV, a sound system such as Sonos, and a display-only power socket into **one Home Assistant TV media player**. Uses the devices' existing HA integrations; it does not implement their network protocols.
 
 Requires [LG Professional Display 2.0.0 or later](https://github.com/mvs90/lg_rs232_ip) (public API v1) and Home Assistant 2025.3 or later. Each LG display can have one AV system. All other devices are optional. Current version: **1.6.3**.
