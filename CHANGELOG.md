@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.7.1
+
+- Consolidate acknowledged Apple TV power-off handling and current source metadata.
+- Declare the Apple TV SDK in the minimum test requirements so the documented local test setup is reproducible.
+
 ## 1.6.3
 
 - Maintenance release verified with LG Professional Display 2.33.2 and Display Studio 1.2.2 on Home Assistant 2025.3.4 and 2026.9.4.

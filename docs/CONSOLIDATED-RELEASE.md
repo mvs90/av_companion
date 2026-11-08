@@ -1,4 +1,4 @@
-# 1.7.0
+# 1.7.1
 
 Consolidates the installed AV implementation and published 1.6.3 changes. Preserves configured routes and devices. Improves Apple TV power acknowledgment, source metadata and arbitration so newer user actions take precedence over pending operations.
 

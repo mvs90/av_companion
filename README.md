@@ -1,6 +1,6 @@
 # AV Companion
 
-Current consolidated release: **1.7.0**. See [release notes](docs/CONSOLIDATED-RELEASE.md). Existing configuration is retained.
+Current consolidated release: **1.7.1**. See [release notes](docs/CONSOLIDATED-RELEASE.md). Existing configuration is retained.
 
 Combine an LG professional display, an optional player such as Apple TV, a sound system such as Sonos, and a display-only power socket into **one Home Assistant TV media player**. Uses the devices' existing HA integrations; it does not implement their network protocols.
 

@@ -4,3 +4,6 @@ pytest-asyncio>=0.25,<2
 ruff>=0.9,<1
 numpy>=2.2,<3
 PyTurboJPEG>=1.7.5,<2
+
+# Apple TV SDK matching the Home Assistant 2025.3.4 test baseline.
+pyatv==0.16.0
