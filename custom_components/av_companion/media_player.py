@@ -262,6 +262,7 @@ class AVMediaPlayer(
         self._power_supply_off_task = None
         self._display_wake_task = None
         self._display_wake_automatic = False
+        self._homekit_volume_adapter = None
         self._blocked_linked_turn_off_task = None
         self._display_unresponsive_since: Optional[float] = None
         self._suppress_linked_power_on_until: float = 0.0
@@ -721,6 +722,11 @@ class AVMediaPlayer(
         return self._playback_attribute("media_content_type")
 
     async def async_added_to_hass(self) -> None:
+        from .homekit_volume import HomeKitVolumeAdapter
+
+        self._homekit_volume_adapter = HomeKitVolumeAdapter(self.hass, self.entity_id)
+        self._homekit_volume_adapter.start()
+
         @callback
         def display_changed(event):
             if event.data.get("entry_id") == self._config_entry.data.get("lg_entry_id"):
@@ -801,6 +807,9 @@ class AVMediaPlayer(
 
     async def async_will_remove_from_hass(self) -> None:
         self._ha_stopping = True
+        if self._homekit_volume_adapter is not None:
+            self._homekit_volume_adapter.stop()
+            self._homekit_volume_adapter = None
         self._cancel_standby_countdown()
         await self._async_cancel_presentations()
         await self._async_cancel_wake()

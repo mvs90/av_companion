@@ -7,3 +7,6 @@ PyTurboJPEG>=1.7.5,<2
 
 # Apple TV SDK matching the Home Assistant 2025.3.4 test baseline.
 pyatv==0.16.0
+
+# Real HomeKit characteristics; all service/network dispatch remains mocked.
+HAP-python==5.0.0

@@ -1,10 +1,10 @@
 # AV Companion
 
-Current consolidated release: **1.7.2**. See [release notes](docs/CONSOLIDATED-RELEASE.md). Existing configuration is retained.
+Current consolidated release: **1.7.3**. See [release notes](docs/CONSOLIDATED-RELEASE.md). Existing configuration is retained.
 
 Combine an LG professional display, an optional player such as Apple TV, a sound system such as Sonos, and a display-only power socket into **one Home Assistant TV media player**. Uses the devices' existing HA integrations; it does not implement their network protocols.
 
-Requires [LG Professional Display 2.0.0 or later](https://github.com/mvs90/lg_rs232_ip) (public API v1) and Home Assistant 2025.3 or later. Each LG display can have one AV system. All other devices are optional. Current version: **1.7.2**.
+Requires [LG Professional Display 2.0.0 or later](https://github.com/mvs90/lg_rs232_ip) (public API v1) and Home Assistant 2025.3 or later. Each LG display can have one AV system. All other devices are optional. Current version: **1.7.3**.
 
 [Deutsche Anleitung](docs/README.de.md) · [Actions and examples](docs/FEATURES.md) · [Standby behavior](docs/STANDBY.md) · [MIT license](LICENSE)
 
@@ -102,3 +102,10 @@ If you find this project useful, you can support its development and maintenance
 with a voluntary contribution via [GitHub Sponsors](https://github.com/sponsors/mvs90) or
 [PayPal](https://www.paypal.me/mvs90).
 Thank you for your support!
+
+
+### HomeKit absolute volume (1.7.3)
+
+For AV televisions exposed by Home Assistant's HomeKit integration, AV Companion normalizes HomeKit's 0–100% writes to HA's 0–1 scale and synchronizes the absolute Volume feedback. For example, 1% becomes 0.01 and a measured level of 0.39 is published as 39%. Unknown/unavailable or invalid feedback is not invented as zero.
+
+The compatibility adapter binds only this AV entity's existing HomeKit accessories. It rebinds after HomeKit reloads (with a 15-second discovery fallback), restores callbacks on AV unload, and leaves source/remote/mute/relative-volume callbacks and pairing identity intact. It neither replaces HomeKit classes nor writes HA Core files. Attachment and feedback publish HAP state only; only a genuine client volume write uses the normal HomeKit service dispatcher. No volume or playback command is needed to deploy or validate the feedback correction. Sanitized AV diagnostics report whether the adapter is active and how many matching accessories are bound.

@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.7.3
+
+- Correct HomeKit TV absolute-volume normalization and feedback for AV accessories: 1% →0.01, measured0.39 →39%. Invalid/unknown values never create a guessed zero-volume command.
+- Scope compatibility callbacks to the existing AV accessory instance, rebind after HomeKit reloads, and restore on unload without changing pairing or other controls. Expose attachment status in AV diagnostics.
+- Add real HAP-characteristic regression tests with mocked service/network dispatch and add Home Assistant2026.11.0 to CI.
+
 ## 1.7.2
 
 - Cancel pending automatic display wakes immediately when the automation lock is enabled, including the supply startup delay. Revoke queued intent across a lock/unlock cycle. Explicit manual controls remain available and supersede pending automatic wakes.

@@ -1,3 +1,9 @@
+# 1.7.3 HomeKit absolute-volume correction
+
+HomeKit TV percentage writes and absolute feedback are normalized for existing AV accessories. Pairing and source/remote controls remain intact; no live device commands are required to attach or validate feedback. Real HAP-characteristic tests exercise percentages including0/1/39/100, state feedback, invalid values, reload, unload and accessory isolation with all service/network dispatch mocked. See the README HomeKit section for lifecycle and diagnostic details.
+
+The following notes describe earlier release baselines.
+
 # 1.7.2 automation-lock correction
 
 Pending automatic wakes now stop when the automation lock is enabled, while explicit manual control remains available. Tests reproduce lock activation before task execution, during the startup delay, and while intent waits behind another control transaction. Manual supersession is covered separately. Supply startup timing is documented in [STANDBY.md](STANDBY.md).
