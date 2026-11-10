@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.7.2
+
+- Cancel pending automatic display wakes immediately when the automation lock is enabled, including the supply startup delay. Revoke queued intent across a lock/unlock cycle. Explicit manual controls remain available and supersede pending automatic wakes.
+- Keep display-only supply restoration immediate; the configured startup delay applies after supply-on, before display commands.
+- Add regression coverage for lock timing, queued intent and manual control.
+
 ## 1.7.1
 
 - Consolidate acknowledged Apple TV power-off handling and current source metadata.

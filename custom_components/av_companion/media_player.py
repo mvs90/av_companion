@@ -261,6 +261,7 @@ class AVMediaPlayer(
         self._display_off_forwarded = False
         self._power_supply_off_task = None
         self._display_wake_task = None
+        self._display_wake_automatic = False
         self._blocked_linked_turn_off_task = None
         self._display_unresponsive_since: Optional[float] = None
         self._suppress_linked_power_on_until: float = 0.0
@@ -737,6 +738,14 @@ class AVMediaPlayer(
         @callback
         def automation_changed(event):
             if event.data.get("entry_id") == self._config_entry.entry_id:
+                if not self._sync_automation_enabled:
+                    # Revoke queued intent even if the lock is released again.
+                    self._wake_generation += 1
+                    if self._display_wake_automatic:
+                        if self._display_wake_task is not None:
+                            self._display_wake_task.cancel()
+                        self._pending_state = None
+                        self._pending_state_until = 0.0
                 self._sync_standby_countdown()
                 self.async_schedule_update_ha_state(True)
 
@@ -1046,13 +1055,20 @@ class AVMediaPlayer(
             if self._blocked_linked_turn_off_task is asyncio.current_task():
                 self._blocked_linked_turn_off_task = None
 
-    def _start_display_wake_task(self, reason: str) -> None:
+    def _start_display_wake_task(self, reason: str, *, automatic: bool = False) -> None:
         self._cancel_power_supply_off_task()
         if self._display_wake_task is not None and not self._display_wake_task.done():
-            return
-        self._display_wake_task = self.hass.async_create_task(
-            self._async_ensure_display_on_after_power_restore(reason)
+            if automatic or not self._display_wake_automatic:
+                return
+            # Explicit user control supersedes a pending automatic wake.
+            self._display_wake_task.cancel()
+        self._display_wake_automatic = automatic
+        wake = (
+            self._async_ensure_display_on_after_power_restore(reason, automatic=True)
+            if automatic
+            else self._async_ensure_display_on_after_power_restore(reason)
         )
+        self._display_wake_task = self.hass.async_create_task(wake)
 
     def _schedule_power_supply_off(self, reason: str) -> None:
         if self._power_supply_switch_entity_id is None:
@@ -1086,14 +1102,22 @@ class AVMediaPlayer(
             if self._power_supply_off_task is asyncio.current_task():
                 self._power_supply_off_task = None
 
-    async def _async_ensure_display_on_after_power_restore(self, reason: str) -> None:
+    async def _async_ensure_display_on_after_power_restore(
+        self, reason: str, *, automatic: bool = False
+    ) -> None:
         self._cancel_power_supply_off_task()
         generation = self._control_generation
 
         def current():
-            return generation == self._control_generation and not self._ha_stopping
+            return (
+                generation == self._control_generation
+                and not self._ha_stopping
+                and (not automatic or self._sync_automation_enabled)
+            )
 
         try:
+            if not current():
+                return
             if self._power_supply_switch_entity_id is not None:
                 if await self._async_call_power_supply_service("turn_on"):
                     self._log_power_sync(
@@ -1108,6 +1132,8 @@ class AVMediaPlayer(
                     )
                     return
 
+            if not current():
+                return
             await asyncio.sleep(
                 self._config_entry.options.get("power_supply_startup_delay", 0)
             )
@@ -1158,6 +1184,7 @@ class AVMediaPlayer(
         finally:
             if self._display_wake_task is asyncio.current_task():
                 self._display_wake_task = None
+                self._display_wake_automatic = False
 
     def _log_power_sync(self, message: str, **context: Any) -> None:
         """Emit structured debug logs for power sync decisions."""

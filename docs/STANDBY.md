@@ -34,3 +34,12 @@ Signal-loss delays accept 5–86400 seconds (0 disables), default **15 seconds**
 The configurable 15-second no-signal shutdown still requires fresh repeated HDMI loss. Signal-loss shutdown now powers down the display/supply only: sending a player-off command during a reboot can put the just-returned Apple TV back to sleep. Explicit AV power-off still shuts down the player as configured. Polling does not forward our own successful off a second time.
 
 A runtime disconnect (`unknown`/`unavailable`) observed while viewing, or within three minutes of an automatic no-signal shutdown, opens a bounded three-minute reconnect window. A fresh active return (including `idle`) may restore display power/supply. This does not apply to a restored HA startup baseline, unchanged metadata updates, a continuously stale active state, or a manual shutdown. Explicit controls invalidate queued wake intent. Genuine playback events arriving during an automatic off transaction wait for the command to finish and revalidate current state, lock and presentation protection before waking. A newer inactive state cancels the pending wake. No periodic wake probes or additional HDMI input switching are introduced.
+
+
+## Supply timing and automation lock (1.7.2)
+
+Use only a dedicated display outlet, never an upstream outlet shared with the player, sound system or HDMI accessories. On a genuine linked-player wake, AV requests supply-on immediately. The configured supply startup delay begins **after** supply-on is acknowledged; it allows the display electronics to boot before native display commands. Player-to-HA event delivery can add latency independently.
+
+The Sync Automation Lock is ON when automatic control is blocked. Enabling it revokes queued automatic wake intent and cancels a running automatic wake, including its startup wait. A later unlock does not replay old intent. It does not cut an already restored supply or turn an already running display off. Explicit manual display commands remain available, including a manual wake that supersedes an automatic one. Bind lock-on to the departure routine and lock-off to arrival, respecting any guest-mode guards in those routines.
+
+No-signal and idle thresholds are configurable; zero disables the respective timer. A preserved HDMI signal cannot prove the player is awake. Confirmed native linked-player power-off remains a separate shutdown path.

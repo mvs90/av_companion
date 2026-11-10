@@ -85,4 +85,4 @@ class RestartRecovery:
                 self._pending_state_until = (
                     time.monotonic() + self._pending_power_seconds
                 )
-                self._start_display_wake_task("linked playback/reconnect event")
+                self._start_display_wake_task("linked playback/reconnect event", automatic=True)
