@@ -38,6 +38,7 @@ from .standby_notice import StandbyCountdown
 from .controls import ExtendedControls
 from .audio import AudioRouting
 from .recovery import RestartRecovery
+from .linked_connection import LinkedConnectionHealth
 from .metadata import PlaybackMetadata
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import entity_platform
@@ -109,6 +110,10 @@ async def async_setup_entry(
     async_add_entities([player])
     platform = entity_platform.async_get_current_platform()
     services = {
+        "refresh_linked_connection": (
+            {vol.Optional("repair_missing_raop", default=False): cv.boolean},
+            "async_refresh_linked_connection",
+        ),
         "send_remote_command": (
             {
                 vol.Required("command"): vol.In(
@@ -201,6 +206,7 @@ async def async_setup_entry(
 
 
 class AVMediaPlayer(
+    LinkedConnectionHealth,
     RestartRecovery,
     PlaybackMetadata,
     AudioRouting,
@@ -268,6 +274,7 @@ class AVMediaPlayer(
         self._suppress_linked_power_on_until: float = 0.0
 
         self._init_recovery()
+        self._init_linked_connection()
         self._init_controls()
         self._init_standby_countdown()
         self._standby_guard = StandbyGuard()
@@ -1484,6 +1491,11 @@ class AVMediaPlayer(
     async def _async_handle_linked_state_change(self, event) -> None:
         if self._ha_stopping:
             return
+        if self._linked_connection_refreshing:
+            # A maintenance disconnect/reconnect is never remote-control intent.
+            self._update_linked_cache_from_state()
+            self.async_write_ha_state()
+            return
         if await self._async_confirmed_linked_off(event):
             return
         if self._any_presentation_active:
@@ -2214,6 +2226,7 @@ class AVMediaPlayer(
 
     async def async_update(self) -> None:
         try:
+            await self._async_check_linked_connection()
             await self._async_update_state()
         finally:
             self._sync_standby_countdown()

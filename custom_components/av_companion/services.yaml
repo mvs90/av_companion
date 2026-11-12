@@ -172,3 +172,16 @@ show_display_content:
       default: true
       selector:
         boolean: {}
+
+refresh_linked_connection:
+  name: Refresh linked Apple TV connection
+  description: Reconnect the configured native Apple TV entry while the AV display is off. Sends no device control commands. Optional explicit repair removes only a missing RAOP protocol and saves the original pairing keys privately in HA storage; AirPlay and Companion must remain paired.
+  target:
+    entity:
+      integration: av_companion
+      domain: media_player
+  fields:
+    repair_missing_raop:
+      default: false
+      selector:
+        boolean:

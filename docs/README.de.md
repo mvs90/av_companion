@@ -67,3 +67,12 @@ Wenn dir dieses Projekt hilft, kannst du seine Weiterentwicklung und Pflege
 freiwillig über [GitHub Sponsors](https://github.com/sponsors/mvs90) oder
 [PayPal](https://www.paypal.me/mvs90) unterstützen.
 Vielen Dank für deine Unterstützung!
+
+
+### Apple-TV-Verbindung ohne Gerätebefehle warten (1.7.4)
+
+Die optionale Verbindungsüberwachung erneuert nur die native Home-Assistant-Verbindung, wenn das AV-Display aus ist, die Automatik freigegeben ist und seit mindestens 30 Minuten keine neue inaktive Apple-TV-Rückmeldung vorliegt. Pro 30 Minuten ist höchstens ein Versuch möglich. Länger unveränderte Daten sind kein Beweis eines Gerätefehlers; die Funktion ist eine vorsorgliche Sitzungserneuerung und bleibt standardmäßig aus. Laufende Wiedergabe, eine Automationssperre und wiederhergestellte Startzustände lösen keine Wartung aus.
+
+Die Aktion `av_companion.refresh_linked_connection` arbeitet ebenfalls nur bei ausgeschaltetem AV-Display. Mit `repair_missing_raop: true` ist zusätzlich eine gezielte Reparatur möglich, aber ausschließlich wenn Home Assistant genau das fehlende Protokoll RAOP meldet und AirPlay sowie Companion weiterhin gekoppelt sind. Die ursprünglichen Protokollschlüssel werden zuerst privat in `.storage/av_companion.apple_tv_recovery.<Apple-TV-entry-id>` gesichert. Anschließend wird nur RAOP aus den aktiven Protokollanforderungen des nativen Apple-TV-Eintrags genommen; Geräte-, Entity-IDs und andere Kopplungen bleiben erhalten. Das ist keine generische Protokollbereinigung: Fehlendes AirPlay oder Companion wird niemals entfernt. Über RAOP bereitgestellte reine Audiowiedergabe an den HA-Apple-TV-Eintrag ist bis zur Wiederherstellung/erneuten Kopplung dieses Protokolls nicht verfügbar. Die Originalschlüssel sind nicht Bestandteil von Diagnosen, Logs oder Repositorydateien.
+
+Wartung sendet keine Einschalt-, Ausschalt-, Wiedergabe-, Lautstärke- oder Steckdosenbefehle. Wartungsbedingte Zustandswechsel werden nicht als Einschaltwunsch ausgewertet.
