@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.7.4
+
+- Add opt-in native Apple TV connection maintenance for stalled inactive metadata while the display is off. Reconnects are bounded to one per 30 minutes and respect automation locks, active playback and restored startup states.
+- Add an explicit `refresh_linked_connection` maintenance action. When Home Assistant reports **only RAOP missing**, optional repair privately backs up the original pairing credentials and removes only the missing RAOP requirement, keeping AirPlay, Companion, entity IDs and all other entry data. RAOP-only audio delivery through the HA Apple TV entry is not available until that optional protocol is paired/restored again.
+- Never treat maintenance disconnect/reconnect events as power or playback intent; no source, display, volume or outlet commands are sent. Expose sanitized maintenance outcome in diagnostics.
+- Add 19 regression cases covering preserved pairing backups, required-protocol refusal, maintenance event isolation, watchdog guards and failure cooldown.
+
 ## 1.7.3
 
 - Correct HomeKit TV absolute-volume normalization and feedback for AV accessories: 1% →0.01, measured0.39 →39%. Invalid/unknown values never create a guessed zero-volume command.

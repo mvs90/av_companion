@@ -64,7 +64,8 @@
           "pip_no_signal_view": "PiP fallback view without HDMI",
           "standby_notice_enabled": "Show countdown on the display",
           "standby_notice_text": "Countdown message text",
-          "sonos_pip_view": "View for PiP Sonos"
+          "sonos_pip_view": "View for PiP Sonos",
+          "linked_connection_watchdog": "Refresh a stalled Apple TV connection"
         },
         "data_description": {
           "standby_signal_check": "Required for automatic shutdown when the linked player reports off/standby. Present or unknown HDMI signal prevents that shutdown.",
@@ -74,7 +75,8 @@
           "pip_no_signal_view": "Used only for Show view without HDMI. Lists saved views with no HDMI element.",
           "standby_notice_text": "Up to 250 characters. {seconds} shows remaining seconds; {action} shows the planned action. A countdown is appended if omitted. Requires the connected display app. {player} shows the HDMI player name.",
           "sonos_select_tv_source": "Off: use Sonos TV autoplay. On: only explicitly selecting an HDMI input selects TV audio. Power-on, app, dashboard, media and PiP selections do not change the audio source.",
-          "sonos_pip_view": "Editable Studio view with HDMI and media widgets. Defaults to Dashboard PiP; optionally select a separate saved view. Deleting it falls back to Dashboard PiP."
+          "sonos_pip_view": "Editable Studio view with HDMI and media widgets. Defaults to Dashboard PiP; optionally select a separate saved view. Deleting it falls back to Dashboard PiP.",
+          "linked_connection_watchdog": "Only while the display is off and automation is enabled. Refresh the native HA connection after 30 minutes without inactive-state reports, at most once per 30 minutes. No power, media or volume commands."
         }
       }
     },

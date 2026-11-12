@@ -221,6 +221,7 @@ class AVOptionsFlow(config_entries.OptionsFlow):
             "notification_wake_display": False,
             "quiet_hours_enabled": False,
             "sonos_select_tv_source": False,
+            "linked_connection_watchdog": False,
         }.items():
             schema[vol.Optional(key, default=values.get(key, default))] = bool
         schema.update(self._standby_schema(values))

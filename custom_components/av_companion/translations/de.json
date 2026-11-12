@@ -64,7 +64,8 @@
           "pip_no_signal_view": "PiP-Zielansicht ohne HDMI",
           "standby_notice_enabled": "Countdown-Meldung auf dem Display",
           "standby_notice_text": "Text der Countdown-Meldung",
-          "sonos_pip_view": "Ansicht für PiP Sonos"
+          "sonos_pip_view": "Ansicht für PiP Sonos",
+          "linked_connection_watchdog": "Apple-TV-Verbindung bei ausbleibender Rückmeldung erneuern"
         },
         "data_description": {
           "standby_signal_check": "Erforderlich für automatisches Ausschalten bei Zuspieler „aus“/„Standby“. Ein vorhandenes oder unbekanntes HDMI-Signal verhindert diese Abschaltung.",
@@ -74,7 +75,8 @@
           "pip_no_signal_view": "Wird nur bei „Ansicht ohne HDMI anzeigen“ verwendet. Zur Auswahl stehen gespeicherte Ansichten ohne HDMI-Element.",
           "standby_notice_text": "Bis 250 Zeichen. {seconds} zeigt die verbleibenden Sekunden, {action} die geplante Aktion. Ohne Sekunden-Platzhalter wird ein Countdown angehängt. Anzeige benötigt die verbundene Display-App. {player} zeigt den Namen des HDMI-Zuspielers.",
           "sonos_select_tv_source": "Aus: Sonos entscheidet selbst per TV-Autoplay. Ein: Nur die ausdrückliche Auswahl eines HDMI-Eingangs wählt TV-Ton. Einschalten, App-, Dashboard-, Mediaplayer- und PiP-Auswahl ändern die Audioquelle nicht.",
-          "sonos_pip_view": "Bearbeitbare Studio-Ansicht mit HDMI- und Medienkarte. Standard: Dashboard PiP; eine eigene Ansicht kann separat zugeordnet werden. Wird sie gelöscht, wird wieder Dashboard PiP verwendet."
+          "sonos_pip_view": "Bearbeitbare Studio-Ansicht mit HDMI- und Medienkarte. Standard: Dashboard PiP; eine eigene Ansicht kann separat zugeordnet werden. Wird sie gelöscht, wird wieder Dashboard PiP verwendet.",
+          "linked_connection_watchdog": "Nur bei ausgeschaltetem Display und freigegebener Automatik. Nach 30 Minuten unveränderter inaktiver Rückmeldung wird nur die HA-Verbindung erneuert; keine Gerätebefehle und höchstens einmal je 30 Minuten."
         }
       }
     },
