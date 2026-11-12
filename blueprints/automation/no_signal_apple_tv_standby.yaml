@@ -1,0 +1,102 @@
+blueprint:
+  name: AV Companion · Apple TV standby after sustained no signal
+  description: After the display-only supply has switched off for five minutes due to no signal, refresh
+    the native Apple TV connection and suspend only an unchanged idle/paused source. Never runs at HA
+    startup, while playing, during a source reconnect, after display activity, or with automation locked.
+    Requires AV Companion 1.7.4+. Prevents an already-awake source from hiding the next Siri Remote wake.
+    Does not switch any outlet or control audio.
+  domain: automation
+  input:
+    av_player:
+      name: AV Companion media player
+      selector:
+        entity:
+          domain: media_player
+    display_player:
+      name: Physical display media player
+      selector:
+        entity:
+          domain: media_player
+    display_supply:
+      name: Display-only power supply
+      selector:
+        entity:
+          domain: switch
+    source_player:
+      name: Native Apple TV media player
+      selector:
+        entity:
+          domain: media_player
+    source_remote:
+      name: Native Apple TV remote
+      selector:
+        entity:
+          domain: remote
+    automation_lock:
+      name: AV automation lock
+      selector:
+        entity:
+          domain: switch
+alias: AV · Apple TV nach No-Signal in Standby sichern
+mode: single
+max_exceeded: silent
+variables:
+  av_player: !input 'av_player'
+  display_player: !input 'display_player'
+  display_supply: !input 'display_supply'
+  source_player: !input 'source_player'
+  source_remote: !input 'source_remote'
+  automation_lock: !input 'automation_lock'
+triggers:
+- trigger: state
+  entity_id: !input 'display_supply'
+  from: 'on'
+  to: 'off'
+  for:
+    minutes: 5
+conditions:
+- condition: template
+  value_template: "{% set av = states[av_player] %}\n{% set display = states[display_player] %}\n{% set\
+    \ supply = states[display_supply] %}\n{% set source = states[source_player] %}\n{{ av is not none\
+    \ and display is not none and supply is not none and source is not none\n   and av.state == 'off'\
+    \ and display.state == 'off' and supply.state == 'off'\n   and not av.attributes.get('restored', false)\
+    \ and not display.attributes.get('restored', false)\n   and not supply.attributes.get('restored',\
+    \ false) and not source.attributes.get('restored', false)\n   and is_state(automation_lock, 'off')\
+    \ and is_state(source_remote, 'on')\n   and av.attributes.get('last_standby_reason') == 'no_signal'\n\
+    \   and source.state in ['paused', 'idle']\n   and as_timestamp(supply.last_changed) == as_timestamp(trigger.to_state.last_changed)\n\
+    \   and as_timestamp(av.last_changed) <= as_timestamp(trigger.to_state.last_changed)\n   and as_timestamp(display.last_changed)\
+    \ <= as_timestamp(trigger.to_state.last_changed)\n   and as_timestamp(source.last_changed) <= as_timestamp(trigger.to_state.last_changed)\
+    \ }}"
+actions:
+- variables:
+    source_fingerprint: '{{ [states(source_player), state_attr(source_player, ''app_id''), state_attr(source_player,
+      ''media_content_id''), state_attr(source_player, ''media_title'')] }}'
+    refresh_started: '{{ as_timestamp(now()) }}'
+- action: av_companion.refresh_linked_connection
+  target:
+    entity_id: !input 'av_player'
+- delay:
+    seconds: 3
+- condition: template
+  value_template: "{% set av = states[av_player] %}\n{% set display = states[display_player] %}\n{% set\
+    \ supply = states[display_supply] %}\n{% set source = states[source_player] %}\n{{ av is not none\
+    \ and display is not none and supply is not none and source is not none\n   and av.state == 'off'\
+    \ and display.state == 'off' and supply.state == 'off'\n   and not av.attributes.get('restored', false)\
+    \ and not display.attributes.get('restored', false)\n   and not supply.attributes.get('restored',\
+    \ false) and not source.attributes.get('restored', false)\n   and is_state(automation_lock, 'off')\
+    \ and is_state(source_remote, 'on')\n   and av.attributes.get('last_standby_reason') == 'no_signal'\n\
+    \   and source.state in ['paused', 'idle']\n   and as_timestamp(supply.last_changed) == as_timestamp(trigger.to_state.last_changed)\n\
+    \   and as_timestamp(av.last_changed) <= as_timestamp(trigger.to_state.last_changed)\n   and as_timestamp(display.last_changed)\
+    \ <= as_timestamp(trigger.to_state.last_changed)\n   and [source.state, source.attributes.get('app_id'),\
+    \ source.attributes.get('media_content_id'), source.attributes.get('media_title')] == source_fingerprint\n\
+    \   and as_timestamp(source.last_reported) >= refresh_started\n   and as_timestamp(now()) - as_timestamp(source.last_reported)\
+    \ < 30 }}"
+- action: remote.send_command
+  target:
+    entity_id: !input 'source_remote'
+  data:
+    command: suspend
+- wait_template: '{{ is_state(source_player, ''off'') }}'
+  timeout:
+    seconds: 15
+  continue_on_timeout: false

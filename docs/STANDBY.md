@@ -43,3 +43,33 @@ Use only a dedicated display outlet, never an upstream outlet shared with the pl
 The Sync Automation Lock is ON when automatic control is blocked. Enabling it revokes queued automatic wake intent and cancels a running automatic wake, including its startup wait. A later unlock does not replay old intent. It does not cut an already restored supply or turn an already running display off. Explicit manual display commands remain available, including a manual wake that supersedes an automatic one. Bind lock-on to the departure routine and lock-off to arrival, respecting any guest-mode guards in those routines.
 
 No-signal and idle thresholds are configurable; zero disables the respective timer. A preserved HDMI signal cannot prove the player is awake. Confirmed native linked-player power-off remains a separate shutdown path.
+
+## Optional Apple TV standby after sustained no signal
+
+An Apple TV can remain awake and paused after the display's no-signal shutdown.
+Pressing Home in an already active app may then produce no new power or playback
+state for Home Assistant to observe. A connection watchdog cannot manufacture
+that missing wake event.
+
+Import `blueprints/automation/no_signal_apple_tv_standby.yaml` as a Home Assistant
+automation blueprint and select the AV player, physical display, display-only
+supply, native Apple TV player/remote and AV automation lock. Requires AV Companion
+1.7.4 or newer. It deliberately acts only after a future **on → off** transition
+of the display supply held for five minutes, with `last_standby_reason=no_signal`.
+There is no startup trigger or periodic suspend.
+
+The display, AV player and supply must remain off, automation must be unlocked,
+and the native source must have remained idle/paused since before that shutdown.
+Playing, buffering, disconnected/restored states, recent source transitions,
+and display/supply activity reject the action. The automation renews the native
+Apple TV connection without physical commands, then rechecks all guards against
+a fresh report and unchanged source state/app/content. Only then does it send
+`suspend` and await a confirmed `off` report. Connection failure stops the sequence;
+it never cuts source power, switches outlets or controls audio.
+
+The five-minute grace period preserves the integration's immediate protection
+against sending a rebooting source back into standby. A reboot/reconnect during
+the observation interval cancels this attempt; a future power-off cycle can try
+again. This is an opt-in policy for installations that want a sleeping Apple TV
+when the no-signal display has remained off. It does not decode Siri Remote BLE
+traffic or guarantee detection of every remote button press.
